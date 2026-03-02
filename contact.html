@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>聯絡我們｜飛灣鐵路公司</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* 表單容器 */
+    .contact-card {
+      background: #ffffff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+      margin: 20px 0;
+      transition: all 0.3s ease;
+    }
+
+    .form-group { margin-bottom: 20px; }
+    .form-group label { display: block; margin-bottom: 8px; font-weight: bold; color: #0051a8; }
+    .form-group input, .form-group select, .form-group textarea {
+      width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 16px; transition: border-color 0.3s;
+    }
+    .form-group input:focus { border-color: #0051a8; outline: none; }
+
+    /* 送出按鈕 */
+    .btn-send {
+      background: #0051a8; color: white; border: none; padding: 15px 30px; border-radius: 6px;
+      font-size: 18px; cursor: pointer; width: 100%; font-weight: bold; transition: background 0.3s;
+    }
+    .btn-send:hover { background: #003d7a; }
+
+    /* 成功狀態隱藏 */
+    #status-overlay { display: none; text-align: center; padding: 40px 0; }
+
+    /* 鐵道風格載入動畫：模擬火車行駛 */
+    .train-loader {
+      width: 100%;
+      height: 4px;
+      background: #e0e0e0;
+      position: relative;
+      overflow: hidden;
+      margin: 20px 0;
+      border-radius: 2px;
+    }
+    .train-loader::after {
+      content: "";
+      width: 40%;
+      height: 100%;
+      background: #0051a8;
+      position: absolute;
+      left: -40%;
+      animation: trainMove 1.5s infinite linear;
+    }
+    @keyframes trainMove {
+      0% { left: -40%; }
+      100% { left: 100%; }
+    }
+
+    .success-icon { font-size: 60px; color: #28a745; margin-bottom: 20px; }
+    
+    /* 漸入動畫 */
+    .fade-in { animation: fadeIn 0.6s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container navbar">
+    <div class="brand">
+      <span class="brand-subtitle">FLYWAN RAILWAY COMPANY</span>
+      <span class="brand-title">飛灣鐵路公司</span>
+    </div>
+    <nav class="nav-links">
+      <a href="index.html">首頁</a>
+      <a href="news.html">公告資訊</a>
+      <a href="stations.html">車站資訊</a>
+      <a href="timetable.html">時刻表</a>
+      <a href="tickets.html">票務資訊</a>
+      <a href="company.html">公司介紹</a>
+      <a href="extras.html">其他資料</a>
+      <a href="contact.html" class="active">聯絡我們</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+  <section>
+    <h1>聯絡飛灣鐵路</h1>
+    <p class="lead">無論是營運建議還是世界觀補完，我們都期待聽到你的聲音。</p>
+  </section>
+
+  <section class="contact-card">
+    <form id="fake-contact-form">
+      <div class="form-group">
+        <label>姓名</label>
+        <input type="text" placeholder="如何稱呼您？" required>
+      </div>
+      <div class="form-group">
+        <label>電子郵件</label>
+        <input type="email" placeholder="您的聯絡信箱" required>
+      </div>
+      <div class="form-group">
+        <label>類別</label>
+        <select>
+          <option>營運建議</option>
+          <option>世界觀補完</option>
+          <option>列車/車站錯誤回報</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>訊息內容</label>
+        <textarea placeholder="請輸入訊息..." required></textarea>
+      </div>
+      <button type="submit" class="btn-send">發送訊息</button>
+    </form>
+
+    <div id="status-overlay" class="fade-in">
+      <div id="loading-box">
+        <div class="train-loader"></div>
+        <p>訊息正送往總部...</p>
+      </div>
+      
+      <div id="success-box" style="display:none;">
+        <div class="success-icon">✉</div>
+        <h2>訊息已送達！</h2>
+        <p>感謝您的意見。</p>
+        <button onclick="location.reload()" class="btn-send" style="width:auto; margin-top:20px; background:#666;">返回聯絡頁面</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="card">
+      <p class="meta">
+        ※ 註：本公司為虛構設定，所有回覆均屬創作交流性質。<br>
+        緊急事務請直接聯繫：faiwanrailway@gmail.com
+      </p>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <p>感謝你搭乘飛灣鐵路，與我們一同建設這個架空世界。</p>
+  </div>
+</footer>
+
+<script>
+  const form = document.getElementById('fake-contact-form');
+  const overlay = document.getElementById('status-overlay');
+  const loadingBox = document.getElementById('loading-box');
+  const successBox = document.getElementById('success-box');
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault(); // 防止網頁跳轉
+
+    // 1. 隱藏表單，顯示動畫容器
+    form.style.display = 'none';
+    overlay.style.display = 'block';
+
+    // 2. 模擬傳送時間（2.5秒）
+    setTimeout(() => {
+      loadingBox.style.display = 'none';
+      successBox.style.display = 'block';
+      
+      // 在控制台留個記錄，方便除錯
+      console.log("模擬訊息已成功發送至飛灣鐵路總部");
+    }, 2500);
+  });
+</script>
+
+</body>
+</html>

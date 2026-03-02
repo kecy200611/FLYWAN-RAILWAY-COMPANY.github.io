@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>飛灣鐵路駕駛模擬器 3D</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        :root {
+            --bg-body: #000;
+            --bg-panel: #141414;
+            --color-ato: #00ccff;   
+            --color-atp: #ffaa00;   
+            --color-ok: #00ff00;    
+            --color-err: #ff3333;
+            --color-radio: #ff0055;   
+            --font-main: "Consolas", "Microsoft JhengHei", sans-serif;
+        }
+
+        html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background-color: var(--bg-body); font-family: var(--font-main); color: #eee; user-select: none; display: flex; flex-direction: column; }
+
+        /* UI Overlay */
+        #overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 10000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .box { background: #222; border: 3px solid var(--color-ato); border-radius: 10px; padding: 30px; width: 90%; max-width: 500px; text-align: center; }
+        select { width: 100%; padding: 10px; background: #333; color: #fff; margin: 10px 0; border: 1px solid #555; font-size: 16px; }
+        button { width: 100%; padding: 15px; font-size: 20px; background: var(--color-ok); border: none; font-weight: bold; cursor: pointer; margin-top: 20px; border-radius: 5px; color:#000; }
+        .fail-box { border-color: var(--color-err); }
+        .win-box { border-color: var(--color-ok); }
+
+        /* Viewport */
+        #viewport { position: relative; flex: 60; background: #000; overflow: hidden; border-bottom: 5px solid #333; cursor: pointer; touch-action: none; }
+        #game-canvas { display: block; width: 100%; height: 100%; outline: none; }
+
+        /* Floating UI */
+        #station-sign { 
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(255,255,255,0.9); color: #004b87; border: 4px solid #004b87; padding: 10px 20px; 
+            font-weight: 900; font-size: 24px; border-radius: 4px; z-index: 50; white-space: nowrap;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5); display: none; 
+        }
+        #msg-center {
+            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.9); color: #fff; padding: 30px 50px;
+            font-size: 36px; display: none; z-index: 100; border-radius: 15px;
+            border: 4px solid var(--color-atp); text-align: center; font-weight: bold;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8); white-space: pre-line;
+        }
+
+        /* Dashboard */
+        #dashboard { position: relative; flex: 40; background-color: var(--bg-panel); display: flex; box-shadow: inset 0 10px 20px rgba(0,0,0,0.8); z-index: 20; }
+        .panel-signal { flex: 3; border-right: 2px solid #333; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        
+/* 響應式儀表板設定 */
+        .speed-gauge-wrap { position: relative; width: 100%; max-width: 180px; aspect-ratio: 1 / 1; margin: 5px auto; display: flex; align-items: center; justify-content: center; }
+        .speed-gauge-wrap svg { width: 100%; height: 100%; }
+        .speed-num { position: absolute; font-size: clamp(1.5em, 5vw, 2.5em); font-weight: bold; color: var(--color-ato); line-height: 1; pointer-events: none; }
+        
+        .ring-bg { fill: none; stroke: #222; stroke-width: 20; }
+        .ring-limit { fill: none; stroke: var(--color-atp); stroke-width: 20; stroke-linecap: butt; transform: rotate(-90deg); transform-origin: 50% 50%; stroke-dasharray: 0 1000; transition: stroke-dasharray 0.1s linear; opacity: 0.8; }
+        .ring-val { fill: none; stroke: var(--color-ato); stroke-width: 12; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; stroke-dasharray: 0 1000; transition: stroke-dasharray 0.1s linear; }
+        .flashing { animation: blink 0.2s infinite; }
+        .radio-flash { animation: flashRed 0.15s infinite; stroke: var(--color-radio) !important; }
+
+        .lamp { width: 90%; text-align: center; padding: 5px; background: #333; margin-top: 5px; border-radius: 4px; color: #555; font-weight: bold; font-size: 0.8em; }
+        .lamp.on { background: var(--color-err); color: #fff; box-shadow: 0 0 10px #ff3333; }
+        .lamp.warn { background: var(--color-atp); color: #000; box-shadow: 0 0 10px var(--color-atp); animation: blink 0.5s infinite; }
+        .lamp.radio { background: var(--color-radio); color: #fff; box-shadow: 0 0 15px var(--color-radio); animation: flashRed 0.15s infinite; border: 2px solid #fff; }
+	/* ... 原有的 .lamp 設定 ... */
+.lamp.vigilance { 
+    background: #00cc00; 
+    color: #000; 
+    box-shadow: 0 0 15px #00ff00; 
+    animation: blink 0.2s infinite; 
+    border: 2px solid #fff; 
+}
+
+        .ma-container { width: 90%; margin-top: auto; background: #111; border: 1px solid #444; padding: 5px; border-radius: 8px; }
+        #stop-gauge { position: relative; width: 100%; height: 25px; background: #ccc; margin-top: 5px; border-radius: 4px; overflow: hidden; border: 2px solid #555; }
+        #stop-gauge-line { position: absolute; left: 50%; top: 0; height: 100%; width: 2px; background: #000; transform: translateX(-50%); z-index: 5; }
+        #stop-gauge-dot { position: absolute; top: 50%; width: 12px; height: 12px; background: #f00; border-radius: 50%; transform: translate(-50%, -50%); display: none; z-index: 10; box-shadow: 0 0 2px rgba(0,0,0,0.5); }
+
+        .panel-tcms { flex: 3; border-right: 2px solid #333; padding: 10px; display: flex; flex-direction: column; cursor: pointer; }
+        .panel-tcms:active { background: #222; }
+        #ui-status-monitor { background: #222; border: 1px solid #555; color: #888; padding: 10px; margin-top: 10px; text-align: center; font-weight: bold; font-size: 1.1em; border-radius: 5px;}
+        .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 5px; }
+        .data-item { background: #222; padding: 5px; border-radius: 4px; border: 1px solid #444; text-align: center; }
+        .data-lbl { color: #888; font-size: 0.6em; }
+        .data-val { color: #fff; font-size: 0.9em; font-weight: bold; }
+
+        .panel-controls { flex: 2; background: #222; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        .lever-group { display: flex; width: 100%; justify-content: space-around; height: 80%; }
+.lever-track {
+    position: relative;
+    width: 30px;
+    background: #111;
+    border: 1px solid #555;
+    border-radius: 10px;
+    height: 100%;
+    /* 確保內部元件不會超出邊框 */
+    display: flex;
+    flex-direction: column; 
+}
+        .lever-handle { position: absolute; left: 2px; width: 24px; height: 20px; border-radius: 5px; transition: top 0.1s; box-shadow: 0 2px 5px #000; z-index: 10; cursor: grab; }
+        #handle-pwr { background: #00cc00; top: 90%; }
+        #handle-brk { background: #ff3333; top: 50%; }
+
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        @keyframes flashRed { 0% { opacity: 1; background: var(--color-radio); } 50% { opacity: 0.5; background: #500; } 100% { opacity: 1; background: var(--color-radio); } }
+    </style>
+</head>
+<body onclick="window.focus()">
+
+<div id="overlay">
+    <div id="menu-box" class="box">
+        <h2 style="color:var(--color-ato)">飛灣鐵路駕駛模擬器 3D <br><span style="font-size:0.6em">Fixed Edition</span></h2>
+        <div style="text-align:left;">
+            <label>起始車站 (從停止標發車)</label><select id="start-sel"></select>
+            <label>行駛方向</label><select id="dir-sel"><option value="down">下行 (往 全京)</option><option value="up">上行 (往 工業區)</option></select>
+            <label>車種</label><select id="type-sel"><option value="local">普通 (Local)</option><option value="express">機場快速 (Express)</option></select>
+            <label style="color:var(--color-radio)">緊急狀況</label>
+            <select id="emer-sel" style="border-color:var(--color-radio)">
+                <option value="none">無 (None)</option>
+                <option value="always">有 (Yes)</option>
+                <option value="random">隨機 (Random)</option>
+            </select>
+        </div>
+        <p style="font-size:0.8em; color:#aaa; margin-top:10px; line-height: 1.6;">
+            1. 請遵守安全駕駛規則，完成3站<br>
+        </p>
+        <button onclick="startGame()">開始駕駛 (START)</button>
+    </div>
+    
+    <div id="result-box" class="box" style="display:none;">
+        <h1 id="res-title">檢定失敗</h1>
+        <p id="res-desc" style="font-size:1.2em; white-space: pre-line;"></p>
+        <button onclick="location.reload()" style="background:#fff; color:#000;">重新開始</button>
+    </div>
+</div>
+
+<div id="viewport">
+    <canvas id="game-canvas"></canvas>
+    <div id="station-sign">車站</div>
+    <div id="msg-center"></div>
+</div>
+
+<div id="dashboard">
+    <div class="panel-signal">
+        <div style="color:#888; font-size:0.8em;">ATP MONITOR</div>
+        <div class="speed-gauge-wrap">
+            <svg width="180" height="180" viewBox="0 0 200 200">
+                <circle cx="100" cy="100" r="80" class="ring-bg"></circle>
+                <circle id="gauge-limit" cx="100" cy="100" r="80" class="ring-limit"></circle>
+                <circle id="gauge-speed" cx="100" cy="100" r="80" class="ring-val"></circle>
+            </svg>
+            <div class="speed-num"><span id="ui-speed">0</span></div>
+        </div>
+        <div id="lamp-atp" class="lamp">ATP NORM</div>
+        
+        <div class="ma-container">
+            <div class="ma-info" style="font-size:0.7em; display:flex; justify-content:space-between;">
+                <span>DIST</span><span id="ui-dist" style="color:var(--color-ato)">0 m</span>
+            </div>
+            
+            <div id="stop-gauge">
+                <div id="stop-gauge-line"></div>
+                <div id="stop-gauge-dot"></div>
+                <div style="position:absolute; left:0; top:0; height:100%; width:1px; background:#999;"></div>
+                <div style="position:absolute; right:0; top:0; height:100%; width:1px; background:#999;"></div>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:0.6em; color:#888; margin-top:2px;">
+                <span>-1M</span>
+                <span>+1M</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel-tcms">
+        <div style="border-bottom:1px solid #444; color:var(--color-ato); display:flex; justify-content:space-between;">
+            <span>TCMS</span><span id="ui-clock">12:00</span>
+        </div>
+        <div id="ui-status-monitor" class="status-monitor">CHECKING...</div>
+        <div class="data-grid">
+            <div class="data-item"><div class="data-lbl">CURRENT</div><div class="data-val" id="ui-curr" style="color:var(--color-ok)">-</div></div>
+            <div class="data-item"><div class="data-lbl">NEXT STOP</div><div class="data-val" id="ui-next">-</div></div>
+            <div class="data-item"><div class="data-lbl">LIMIT</div><div class="data-val" id="ui-limit" style="color:var(--color-atp)">0</div></div>
+            <div class="data-item"><div class="data-lbl">GRAD</div><div class="data-val" id="ui-grad">0‰</div></div>
+            <div class="data-item"><div class="data-lbl">DOOR</div><div class="data-val" id="ui-door">CLSD</div></div>
+            <div class="data-item"><div class="data-lbl">BC</div><div class="data-val" id="ui-bc">0.0</div></div>
+        </div>
+        <div id="lamp-door-warn" class="lamp" style="margin-top:auto;">DOOR CLOSING</div>
+    </div>
+
+    <div class="panel-controls">
+        <div class="lever-group">
+            <div style="position:relative;">
+                <div class="lever-track"><div class="lever-handle" id="handle-brk"></div></div>
+                <div style="text-align:center; font-size:0.6em; margin-top:5px; color:#aaa;">BRK<br>(W/S)</div>
+            </div>
+            <div style="position:relative;">
+                <div class="lever-track"><div class="lever-handle" id="handle-pwr"></div></div>
+                <div style="text-align:center; font-size:0.6em; margin-top:5px; color:#aaa;">PWR<br>(A/D)</div>
+            </div>
+        </div>
+        <div style="font-size:0.7em; color:#666; margin-top:5px;">Space=DOOR, Enter=RADIO</div>
+    </div>
+</div>
+
+<script>
+// --- 路線資料 ---
+    const STATIONS = [
+        { name: "FR01 飛灣工業區", dist: 0, type: "double_island", exp: true }, 
+        { name: "FR02 飛灣港", dist: 7300, type: "passing_side", exp: false },
+        { name: "FR03 物流中心", dist: 8600, type: "side", exp: false },
+        { name: "FR04 飛灣郵輪港", dist: 9800, type: "double_island", exp: true },
+        { name: "FR05 濱江商務區", dist: 17000, type: "side", exp: false },
+        { name: "FR06 市民廣場", dist: 18500, type: "passing_side", exp: false },
+        { name: "FR07 文化中心", dist: 19800, type: "side", exp: false },
+        { name: "FR08 飛灣新站", dist: 21700, type: "double_island", exp: true },
+        { name: "FR09 科創園", dist: 24000, type: "passing_side", exp: false },
+        { name: "FR10 飛灣學區", dist: 25200, type: "side", exp: false },
+        { name: "FR11 飛灣大道", dist: 26900, type: "island", exp: false },
+        { name: "FR12 飛灣公園", dist: 28500, type: "double_island", exp: true },
+        { name: "FR13 錦湖", dist: 29900, type: "side", exp: false },
+        { name: "FR14 鷺島", dist: 30400, type: "side", exp: false },
+        { name: "FR15 空港新城", dist: 33200, type: "island", exp: false },
+        { name: "FR16 飛灣機場", dist: 38100, type: "double_island", exp: true },
+        { name: "FR17 翡翠花園", dist: 43300, type: "side", exp: false },
+        { name: "FR18 紫荊苑", dist: 46500, type: "passing_side", exp: false },
+        { name: "FR19 御景新村", dist: 54700, type: "island", exp: false },
+        { name: "FR20 自然保育中心", dist: 56100, type: "side", exp: false },
+        { name: "FR21 綾路北站", dist: 57900, type: "double_island_end", exp: true },
+        { name: "FR22 全京大道", dist: 59100, type: "island", exp: false }
+    ];
+
+    // 限速區間 (絕對座標)
+    const SPEED_ZONES = [
+        { start: 0, end: 400, limit: 45 },        // FR01 Terminal Crossover
+        { start: 9200, end: 9680, limit: 75 },    // FR04 Curve
+        { start: 17900, end: 18380, limit: 75 },  // FR06 Curve
+        { start: 28800, end: 29430, limit: 60 },  // FR12 往錦湖 第一彎
+        { start: 29500, end: 29820, limit: 90 },  // FR12 往錦湖 第二彎
+        { start: 32600, end: 32920, limit: 90 },  // FR15 Approach
+        { start: 38400, end: 39030, limit: 90 },  // FR16 Dept
+        { start: 57600, end: 58000, limit: 45 },  // FR21 Switch
+        { start: 59350, end: 59500, limit: 45 },  // FR22 Switch
+    ];
+
+    const SIDING_STATIONS = ["FR02", "FR04", "FR06", "FR08", "FR09", "FR12", "FR16", "FR18"];
+    const PHY = { MASS: 180000, MAX_TRAC: 185000, MAX_BRK: 280000, AERO: 6.0, ROLL: 2000, G: 9.8 };
+    const CIRCUMFERENCE = 502; 
+    const DECEL_SERVICE = 3.5;
+
+    let state = {
+        active: false,
+        v: 0, d: 0, p: 0, b: 4, 
+	active: false,
+        door: true, doorClosing: false, doorTimer: 0,
+        route: [], idx: 0, stops: 0,
+        type: 'local', dir: 'down',
+        lastT: 0, atpLimit: 120, grade: 0, timerInt: null,
+        emer: { enabled: false, triggered: false, cleared: false, targetIdx: -1, triggerDist: 0, reactionTimer: 0, occTimer: 0, communicating: false, ebRequiredReset: false },
+    idleTime: 0,           // 累計閒置秒數
+    vigilanceTimer: 5.0,   // 觸發後的 5 秒倒數
+    vigilanceActive: false // 是否正在警示中
+    };
+
+    let sndWarn; try { sndWarn = new Audio('warning.m4a'); sndWarn.volume = 1.0; } catch(e){}
+
+    const ui = {
+        spd: document.getElementById('ui-speed'), rSpd: document.getElementById('gauge-speed'), rLim: document.getElementById('gauge-limit'),
+        dist: document.getElementById('ui-dist'), gaugeDot: document.getElementById('stop-gauge-dot'),
+        hPwr: document.getElementById('handle-pwr'), hBrk: document.getElementById('handle-brk'),
+        sign: document.getElementById('station-sign'), msg: document.getElementById('msg-center'),
+        door: document.getElementById('ui-door'), curr: document.getElementById('ui-curr'), next: document.getElementById('ui-next'),
+        bc: document.getElementById('ui-bc'), lim: document.getElementById('ui-limit'), grad: document.getElementById('ui-grad'),
+        status: document.getElementById('ui-status-monitor'), lampDoor: document.getElementById('lamp-door-warn'), lampAtp: document.getElementById('lamp-atp'),
+        menu: document.getElementById('menu-box'), resBox: document.getElementById('result-box'), overlay: document.getElementById('overlay'), emerSel: document.getElementById('emer-sel')
+    };
+
+// --- 動態音效合成引擎 (Web Audio API) V3 (現代 VVVF 版) ---
+    let audioCtx, masterGain;
+    let motorHumOsc, motorHumGain; // 低沉齒輪/馬達運轉聲
+    let vvvfOsc, vvvfGain;         // VVVF 變頻控制高頻音
+    let rollNoise, rollFilter, rollGain; // 軌道滾動聲
+
+    function initAudio() {
+        if (audioCtx) return; 
+        
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+
+        // 0. 主音量控制器 (Master Gain)
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = 1.5; // 整體放大，1.5 倍比較適中不破音
+        masterGain.connect(audioCtx.destination);
+
+        // 1. 基礎馬達齒輪聲 (使用 sine 正弦波，聲音低沉平滑，不刺耳)
+        motorHumOsc = audioCtx.createOscillator();
+        motorHumOsc.type = 'sine'; 
+        motorHumGain = audioCtx.createGain();
+        motorHumGain.gain.value = 0;
+        motorHumOsc.connect(motorHumGain);
+        motorHumGain.connect(masterGain);
+        motorHumOsc.start();
+
+	// 2. 現代 VVVF 變頻器高頻音 (改為 sine 正弦波，消除刺耳的泛音)
+        vvvfOsc = audioCtx.createOscillator();
+        vvvfOsc.type = 'sine'; // ★ 關鍵修改：從 triangle 改為 sine
+        vvvfGain = audioCtx.createGain();
+        vvvfGain.gain.value = 0;
+        vvvfOsc.connect(vvvfGain);
+        vvvfGain.connect(masterGain);
+        vvvfOsc.start();
+
+        // 3. 軌道滾動聲
+        let bufferSize = audioCtx.sampleRate * 2; 
+        let noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        let output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            output[i] = Math.random() * 2 - 1; 
+        }
+        rollNoise = audioCtx.createBufferSource();
+        rollNoise.buffer = noiseBuffer;
+        rollNoise.loop = true;
+
+        rollFilter = audioCtx.createBiquadFilter();
+        rollFilter.type = 'lowpass';
+        rollFilter.frequency.value = 150; // 起步預設低頻
+
+        rollGain = audioCtx.createGain();
+        rollGain.gain.value = 0;
+
+        rollNoise.connect(rollFilter);
+        rollFilter.connect(rollGain);
+        rollGain.connect(masterGain);
+        rollNoise.start();
+    }
+
+function updateAudio() {
+        if (!audioCtx) return;
+        let speedKph = Math.abs(state.v * 3.6);
+
+        // --- 1. 馬達與 VVVF 邏輯 ---
+        if ((state.p > 0 || (state.b > 0 && state.b < 9)) && speedKph > 0.1) {
+            
+            let isAccelerating = state.p > 0;
+            let pwrLevel = isAccelerating ? state.p / 4 : state.b / 8; 
+            let baseVol = isAccelerating ? 0.25 + (pwrLevel * 0.1) : 0.15 + (pwrLevel * 0.1);
+
+            // A. VVVF 變頻磁勵音 (起步專用，35km/h 後完全安靜)
+            if (speedKph < 35) {
+                let vvvfFreq = 150 + speedKph * 8;
+                vvvfOsc.frequency.setTargetAtTime(vvvfFreq, audioCtx.currentTime, 0.1);
+                
+                // 15km/h 開始淡出，35km/h 完全消失
+                let vvvfFade = speedKph > 15 ? 1 - ((speedKph - 15) / 20) : 1;
+                vvvfGain.gain.setTargetAtTime(baseVol * 0.25 * vvvfFade, audioCtx.currentTime, 0.1);
+            } else {
+                vvvfGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+            }
+
+            // B. 現代三相交流馬達運轉聲 (修正版)
+            // 頻率：不再鎖死！讓頻率隨著速度一路線性上升，模擬馬達轉速不斷加快
+            let humFreq = 100 + speedKph * 4.0; 
+            motorHumOsc.frequency.setTargetAtTime(humFreq, audioCtx.currentTime, 0.1);
+            
+            // 音量：40km/h 開始衰減，到了 90km/h 時音量會降到 0 (完全被風切聲蓋過)
+            let humFade = speedKph > 40 ? Math.max(0, 1 - ((speedKph - 40) / 50)) : 1.0;
+            motorHumGain.gain.setTargetAtTime(baseVol * 0.7 * humFade, audioCtx.currentTime, 0.1);
+
+        } else {
+            // 無動力/煞車時靜音 (惰行狀態只剩軌道聲)
+            motorHumGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2);
+            vvvfGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2);
+        }
+
+        // --- 2. 軌道滾動聲與風切聲 (保持不變) ---
+        if (speedKph > 0.1) {
+            let speedRatio = speedKph / 140; 
+            
+            // 高速時音量呈現「指數上升」，讓風切與軌道摩擦聲接管聽覺
+            let rGain = Math.min(Math.pow(speedRatio, 1.2) * 0.8, 0.8); 
+            rollGain.gain.setTargetAtTime(rGain, audioCtx.currentTime, 0.1);
+            
+            // 濾波器：高速時放開高頻限制，產生 "沙沙" 的氣流聲
+            let filterFreq = 150 + Math.min(speedKph, 120) * 8; 
+            rollFilter.frequency.setTargetAtTime(filterFreq, audioCtx.currentTime, 0.1);
+        } else {
+            rollGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+        }
+    }
+
+// --- 列車專屬：車門動作警示音 (開關門共用) ---
+    function playTrainDoorChime() {
+        if (!audioCtx) return;
+        const now = audioCtx.currentTime;
+
+        // 模擬現代區間車/捷運的柔和雙音 (Ding-Dong)，重複 3 次，總長 3 秒
+        for (let i = 0; i < 3; i++) {
+            let offset = now + (i * 1.0); // 每次間隔 1 秒
+
+            // 高音 Ding (E5)
+            let osc1 = audioCtx.createOscillator();
+            let gain1 = audioCtx.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.value = 659.25; 
+            osc1.connect(gain1);
+            gain1.connect(masterGain);
+            gain1.gain.setValueAtTime(0, offset);
+            gain1.gain.linearRampToValueAtTime(0.5, offset + 0.05);
+            gain1.gain.exponentialRampToValueAtTime(0.01, offset + 0.4);
+            osc1.start(offset);
+            osc1.stop(offset + 0.5);
+
+            // 低音 Dong (C5)
+            let osc2 = audioCtx.createOscillator();
+            let gain2 = audioCtx.createGain();
+            osc2.type = 'sine';
+            osc2.frequency.value = 523.25; 
+            osc2.connect(gain2);
+            gain2.connect(masterGain);
+            gain2.gain.setValueAtTime(0, offset + 0.4);
+            gain2.gain.linearRampToValueAtTime(0.5, offset + 0.45);
+            gain2.gain.exponentialRampToValueAtTime(0.01, offset + 0.9);
+            osc2.start(offset + 0.4);
+            osc2.stop(offset + 1.0);
+        }
+    }
+
+    // --- 3D Engine ---
+    let scene, camera, renderer;
+    let pathPoints = []; 
+    const TOTAL_DIST = 61900;
+    let getTrackGeometry = () => ({ grade: 0 }); 
+
+    function init3D() {
+        const viewport = document.getElementById('viewport');
+        const canvas = document.getElementById('game-canvas');
+        renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, logarithmicDepthBuffer: true });
+        renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x87CEEB, 0.00015);
+        scene.background = new THREE.Color(0x87CEEB);
+        camera = new THREE.PerspectiveCamera(60, viewport.clientWidth / viewport.clientHeight, 0.1, 5000);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        dirLight.position.set(200, 500, 200);
+        scene.add(dirLight);
+        buildWorld();
+        window.addEventListener('resize', onWindowResize);
+    }
+
+    function onWindowResize() {
+        const viewport = document.getElementById('viewport');
+        const canvas = document.getElementById('game-canvas');
+        if(!camera || !renderer) return;
+        camera.aspect = viewport.clientWidth / viewport.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+    }
+
+    function createNoiseTexture() {
+        const size = 64;
+        const data = new Uint8Array(size * size * 4);
+        for (let i = 0; i < size * size * 4; i += 4) {
+            const v = Math.floor(Math.random() * 80) + 120;
+            const varI = Math.random() > 0.8 ? 50 : 0;
+            data[i] = v - varI;
+            data[i + 1] = v - varI;
+            data[i + 2] = v - varI;
+            data[i + 3] = 255;
+        }
+        const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.needsUpdate = true;
+        return tex;
+    }
+
+    function easeInOut(t) { return t <= 0 ? 0 : (t >= 1 ? 1 : (1 - Math.cos(Math.PI * t)) / 2); }
+
+    // 【新增】專門給坡度使用的插值函數 (梯形坡度：緩起 -> 定坡 -> 緩停)
+    function easeGrade(t) {
+        if (t <= 0) return 0;
+        if (t >= 1) return 1;
+        
+        // k 代表豎曲線(變坡)佔總長度的比例。
+        // k = 0.2 代表前 20% 和後 20% 是變坡段，中間 60% 是定坡度。
+        const k = 0.2; 
+        
+        if (t < k) {
+            // 加速段 (拋物線)
+            return (t * t) / (2 * k * (1 - k));
+        } else if (t < 1 - k) {
+            // 等速段 (直線 = 定坡度)
+            return (t - 0.5 * k) / (1 - k);
+        } else {
+            // 減速段 (拋物線)
+            const endT = 1 - t;
+            return 1 - (endT * endT) / (2 * k * (1 - k));
+        }
+    }
+
+function getSmoothY(d) {
+        const yMap = [
+            // --- 市區段 (保持不變) ---
+            { s: 0, e: 8700, y1: 10, y2: 10 }, 
+            { s: 8700, e: 9550, y1: 10, y2: -10 },      
+            { s: 9550, e: 27550, y1: -10, y2: -10 }, 
+            { s: 27550, e: 28250, y1: -10, y2: 0 },      
+            { s: 28250, e: 30650, y1: 0, y2: 0 }, 
+            
+            // --- 1. 機場進場下坡 (FR14 -> FR15) ---
+            { s: 30650, e: 31320, y1: 0, y2: -10 },      
+            
+            // --- 2. 機場地下段 (FR15 ~ FR16 ~ 過彎) ---
+            { s: 31320, e: 39100, y1: -10, y2: -10 }, 
+            
+            // --- 3. 機場離場爬升 (FR16 -> FR17) ---
+            { s: 39100, e: 40440, y1: -10, y2: 10 },     
+            
+            // --- 4. 高架段 (FR17 ~ FR18) ---
+            { s: 40440, e: 46750, y1: 10, y2: 10 }, 
+            
+            // --- 5. 紫荊苑下平地 (FR18 -> FR19) ---
+            { s: 46750, e: 47420, y1: 10, y2: 0 },       
+            
+            // --- 6. 郊區平原段 ---
+            { s: 47420, e: 61900, y1: 0, y2: 0 }         
+        ];
+
+        for (let m of yMap) {
+            if (d >= m.s && d <= m.e) {
+                return m.y1 === m.y2 ? m.y1 : m.y1 + (m.y2 - m.y1) * easeGrade((d - m.s) / (m.e - m.s));
+            }
+        }
+        return d < 0 ? 10 : 0;
+    }
+
+function buildWorld() {
+        let currX = 0, currZ = 0, currA = 0;
+        for (let d = -80; d <= TOTAL_DIST; d += 2) {
+            let rate = 0;
+            if (d >= 9200 && d <= 9671) rate = 1/600; if (d >= 17900 && d <= 18371) rate = 1/600; 
+            if (d >= 28800 && d <= 29428) rate = -1/600; if (d >= 29500 && d <= 29814) rate = 1/600; 
+            if (d >= 32600 && d <= 32914) rate = 1/600; if (d >= 38400 && d <= 39028) rate = 1/600; 
+            currA += rate * 2; currX += Math.sin(currA) * 2; currZ -= Math.cos(currA) * 2;
+            pathPoints.push({ d, x: currX, y: getSmoothY(d), z: currZ, a: currA, rate: rate });
+        }
+        createContinuousWorld();
+        buildTracks();
+        buildStationsAndProps();
+    }
+
+    function getPtDetail(targetD, offset = 0, yDrop = 0) {
+        let idx = Math.floor((targetD + 80) / 2);
+        if (idx < 0) idx = 0; if (idx >= pathPoints.length) idx = pathPoints.length - 1;
+        let p1 = pathPoints[idx]; let p2 = (idx < pathPoints.length - 1) ? pathPoints[idx+1] : p1;
+        let ratio = (targetD - p1.d) / 2; if(ratio < 0) ratio = 0; if(ratio > 1) ratio = 1;
+        let interpA = p1.a + (p2.a - p1.a) * ratio;
+        let nx = Math.cos(interpA), nz = Math.sin(interpA);
+        return { 
+            d: targetD, a: interpA, 
+            x: (p1.x + (p2.x - p1.x) * ratio) + nx * offset, 
+            y: (p1.y + (p2.y - p1.y) * ratio) - yDrop, 
+            z: (p1.z + (p2.z - p1.z) * ratio) + nz * offset, 
+            nx: nx, nz: nz,
+            grade: (p2.y - p1.y) / 2 * 1000
+        };
+    }
+    getTrackGeometry = (d) => { return { grade: getPtDetail(d,0,0).grade }; };
+
+function getBaseOffsets(d) {
+        let L_in = -2, R_in = 2, L_out = null, R_out = null;
+        if (d >= 27600 && d <= 29000) {
+            let w_main = 0;
+            if (d < 27750) w_main = easeInOut((d - 27600)/150);
+            else if (d > 28800) w_main = 1 - easeInOut((d - 28800)/200); else w_main = 1;
+            L_in = -2 - 2.2 * w_main; R_in = 2 + 2.2 * w_main;  
+            let absDiff = Math.abs(d - 28500);
+            if (absDiff <= 250) {
+                let w_out = easeInOut((250 - absDiff)/150); if (absDiff < 100) w_out = 1;
+                L_out = L_in - 7.2 * w_out; R_out = R_in + 7.2 * w_out; 
+            }
+        }
+        for (let st of STATIONS) {
+            if (st.name.includes("FR21") || st.name.includes("FR12")) continue; 
+            let absDiff = Math.abs(d - st.dist);
+            if (absDiff > 250) continue;
+            let w = easeInOut((250 - absDiff)/150); if (absDiff < 100) w = 1;
+            if (st.type === 'island') { L_in = -2 - 2.1*w; R_in = 2 + 2.1*w; }
+            else if (st.type === 'passing_side') { L_out = -2 - 4.0*w; R_out = 2 + 4.0*w; }
+            else if (st.type === 'double_island') { L_out = -2 - 7.2*w; R_out = 2 + 7.2*w; }
+        }
+        return { L_in, R_in, L_out, R_out };
+    }
+
+    function createContinuousWorld() {
+        const positions = [], colors = [], uvs = [];
+        const noiseTex = createNoiseTexture();
+
+        const addQuad = (v1, v2, v3, v4, colHex, isGround) => {
+            let c = new THREE.Color(colHex);
+            let n = (Math.random() - 0.5) * 0.15;
+            let r = Math.max(0, c.r + n), g = Math.max(0, c.g + n), b = Math.max(0, c.b + n);
+            
+            positions.push(v1.x,v1.y,v1.z, v2.x,v2.y,v2.z, v3.x,v3.y,v3.z);
+            positions.push(v1.x,v1.y,v1.z, v3.x,v3.y,v3.z, v4.x,v4.y,v4.z);
+            for(let i=0; i<6; i++) colors.push(r, g, b);
+            
+            if(isGround) { uvs.push(0,0, 1,0, 1,1,  0,0, 1,1, 0,1); } 
+            else { uvs.push(0,0, 0,0, 0,0, 0,0, 0,0, 0,0); }
+        };
+        const pt = (p, nx, nz, off, y) => ({ x: p.x + nx*off, y: y, z: p.z + nz*off });
+
+	function getBoundsAt(d) {
+            let { L_in, R_in, L_out, R_out } = getBaseOffsets(d);
+            let minO = L_out !== null ? L_out : L_in; let maxO = R_out !== null ? R_out : R_in;
+            if (d >= 57600 && d <= 58300) { minO = Math.min(minO, -9.5); maxO = Math.max(maxO, 9.5); }
+            if (d >= 650 && d <= 1050) {
+                let w = 0; if (d < 700) w = easeInOut((d - 650)/50); else if (d > 1000) w = 1 - easeInOut((d - 1000)/50); else w = 1;
+                maxO = Math.max(maxO, 2 + 6.5 * w);
+            }
+            if (d >= 1150 && d <= 1550) {
+                let w = 0; if (d < 1200) w = easeInOut((d - 1150)/50); else if (d > 1500) w = 1 - easeInOut((d - 1500)/50); else w = 1;
+                minO = Math.min(minO, -2 - 6.5 * w);
+            }
+            return { wL: minO - 4.0, wR: maxO + 4.0 };
+        }
+
+        function getWallTop(y) { return y >= 0 ? y + 1.2 : (y >= -6 ? 0.5 : y + 6.0); }
+
+        const pillarGeo = new THREE.BoxGeometry(1.2, 1, 1.2);
+        const pillarMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+
+        for (let i = 0; i < pathPoints.length - 10; i += 10) { 
+            let p1 = pathPoints[i], p2 = pathPoints[i+10];
+            let b1 = getBoundsAt(p1.d), b2 = getBoundsAt(p2.d);
+            let nx1 = Math.cos(p1.a), nz1 = Math.sin(p1.a); 
+            let nx2 = Math.cos(p2.a), nz2 = Math.sin(p2.a);
+            
+            let wt1 = getWallTop(p1.y), wt2 = getWallTop(p2.y);
+            let bed1 = p1.y - 0.1, bed2 = p2.y - 0.1; 
+            
+            // 1. 軌道本體
+            addQuad(pt(p1,nx1,nz1,b1.wR,bed1), pt(p2,nx2,nz2,b2.wR,bed2), pt(p2,nx2,nz2,b2.wL,bed2), pt(p1,nx1,nz1,b1.wL,bed1), 0x4a4a4a, true);
+            
+            // 2. 側牆 (隔音牆/護欄)
+            addQuad(pt(p1,nx1,nz1,b1.wL,bed1), pt(p2,nx2,nz2,b2.wL,bed2), pt(p2,nx2,nz2,b2.wL,wt2), pt(p1,nx1,nz1,b1.wL,wt1), 0x777777, false);
+            addQuad(pt(p1,nx1,nz1,b1.wR,wt1), pt(p2,nx2,nz2,b2.wR,wt2), pt(p2,nx2,nz2,b2.wR,bed2), pt(p1,nx1,nz1,b1.wR,bed1), 0x777777, false);
+            
+            // 3. 隧道頂 (深層地下時繪製)
+            if (p1.y < -5) {
+                addQuad(pt(p1,nx1,nz1,b1.wL,wt1), pt(p2,nx2,nz2,b2.wL,wt2), pt(p2,nx2,nz2,b2.wR,wt2), pt(p1,nx1,nz1,b1.wR,wt1), 0x333333, false);
+            } 
+            
+            // 4. 地面生成邏輯 (全線平面化)
+            if(p1.y >= -5) {
+                 // 【核心修正】
+                 // 草地高度永遠固定在 -2.0，絕不跟隨軌道上升
+                 // 這樣軌道一爬升，就會自動變成「高架橋」的樣子
+                 let gY = -2.0; 
+                 
+                 let outL1 = b1.wL - 0.5, outR1 = b1.wR + 0.5; 
+                 let outL2 = b2.wL - 0.5, outR2 = b2.wR + 0.5;
+
+                 // A. 繪製左右草地 (永遠是平的)
+                 addQuad(pt(p1,nx1,nz1,-500,gY), pt(p2,nx2,nz2,-500,gY), pt(p2,nx2,nz2,outL2 + 1.0,gY), pt(p1,nx1,nz1,outL1 + 1.0,gY), 0x2d4c1e, true);
+                 addQuad(pt(p1,nx1,nz1,outR1 - 1.0,gY), pt(p2,nx2,nz2,outR2 - 1.0,gY), pt(p2,nx2,nz2,500,gY), pt(p1,nx1,nz1,500,gY), 0x2d4c1e, true);
+
+                 // B. 高架判斷：只要軌道比地面高超過 0.5m，就視為高架/橋樑
+                 if (bed1 > gY + 0.5) {
+                     // 補上軌道正下方的地面 (陰影區)
+                     addQuad(pt(p1,nx1,nz1,outL1+1.0, gY), pt(p2,nx2,nz2,outL2+1.0, gY), pt(p2,nx2,nz2,outR2-1.0, gY), pt(p1,nx1,nz1,outR1-1.0, gY), 0x2d4c1e, true);
+                     
+                     // 生成橋墩 (每 40m 一支，且高度足夠時)
+                     if (i % 40 === 0 && bed1 > gY + 3.0) {
+                         let h = bed1 - gY;
+                         let mesh = new THREE.Mesh(pillarGeo, pillarMat);
+                         mesh.scale.set(1, h, 1);
+                         mesh.position.set(p1.x, gY + h/2, p1.z);
+                         mesh.rotation.y = -p1.a;
+                         scene.add(mesh);
+                     }
+                 }
+            }
+        }
+
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        geo.computeVertexNormals();
+        scene.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, map: noiseTex })));
+    }
+
+function buildTracks() {
+        const trackShapes = { PathA: [], PathB: [], PathC: [], PathD: [], Pocket: [] };
+        let activeT = { PathA: null, PathB: null, PathC: null, PathD: null, Pocket: null };
+        function commitTrack(id, detail) {
+            if (detail !== null) { if (!activeT[id]) activeT[id] = []; activeT[id].push(detail); } 
+            else { if (activeT[id]) { trackShapes[id].push(activeT[id]); activeT[id] = null; } }
+        }
+        for (let i = 0; i < pathPoints.length; i++) {
+            let p = pathPoints[i];
+            let { L_in, R_in, L_out, R_out } = getBaseOffsets(p.d);
+            let offA = null, offB = null, offC = null, offD = null, offP = null;
+            if (p.d <= 57980) { offA = L_in; offB = R_in; }
+            if (p.d >= 57650) {
+                if (p.d <= 57800) { let w = easeInOut((p.d - 57650)/150); offC = -2 - 7.2*w; offD = 2 + 7.2*w; }
+                else if (p.d <= 57980) { offC = -9.2; offD = 9.2; }
+                else if (p.d <= 58230) { let w = easeInOut((p.d - 57980)/250); offC = -9.2 + 7.2*w; offD = 9.2 - 7.2*w; }
+                else { offC = L_in; offD = R_in; }
+            } else { offC = L_out; offD = R_out; }
+            if (p.d >= 27848 && p.d <= 28052) offP = 0;
+            commitTrack('PathA', offA !== null ? getPtDetail(p.d, offA) : null);
+            commitTrack('PathB', offB !== null ? getPtDetail(p.d, offB) : null);
+            commitTrack('PathC', offC !== null ? getPtDetail(p.d, offC) : null);
+            commitTrack('PathD', offD !== null ? getPtDetail(p.d, offD) : null);
+            commitTrack('Pocket', offP !== null ? getPtDetail(p.d, offP) : null);
+        }
+        ['PathA','PathB','PathC','PathD','Pocket'].forEach(id => commitTrack(id, null));
+
+        const railMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+        function buildDoubleTrack(ptsDetail, generateSlab = true, elevate = 0) {
+            // (內容不變)
+            if(ptsDetail.length < 2) return;
+            const leftVecs = [], rightVecs = [];
+            for(let i=0; i<ptsDetail.length; i+=2) { 
+                let pt = ptsDetail[i];
+                leftVecs.push(new THREE.Vector3(pt.x + pt.nx * (-0.7175), pt.y + 0.1 + elevate, pt.z + pt.nz * (-0.7175)));
+                rightVecs.push(new THREE.Vector3(pt.x + pt.nx * (0.7175), pt.y + 0.1 + elevate, pt.z + pt.nz * (0.7175)));
+            }
+            const group = new THREE.Group();
+            group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(leftVecs), parseInt(ptsDetail.length/4), 0.08, 4, false), railMat));
+            group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rightVecs), parseInt(ptsDetail.length/4), 0.08, 4, false), railMat));
+            scene.add(group);
+        }
+        ['PathA','PathB','PathC','PathD','Pocket'].forEach(id => { trackShapes[id].forEach(arr => buildDoubleTrack(arr, true, 0)); });
+
+        function buildCrossover(dStart, offStart, dEnd, offEnd) {
+            let pts = []; let steps = Math.abs(dEnd - dStart) / 2;
+            for (let i = 0; i <= steps; i++) {
+                let t = i / steps; pts.push(getPtDetail(dStart + (dEnd - dStart) * t, offStart + (offEnd - offStart) * easeInOut(t), 0));
+            }
+            buildDoubleTrack(pts, false, 0.02); 
+        }
+        buildCrossover(300, -2, 380, 2); buildCrossover(300, 2, 380, -2); 
+        buildCrossover(57720, -2, 57800, 2); buildCrossover(57720, 2, 57800, -2); 
+        buildCrossover(59400, -2, 59480, 2); buildCrossover(59400, 2, 59480, -2); 
+        buildCrossover(27750, -4.2, 27850, 0); buildCrossover(27750, 4.2, 27850, 0);
+        buildCrossover(28050, 0, 28150, -4.2); buildCrossover(28050, 0, 28150, 4.2);
+
+        function buildDepotBranch(dStart, offStart, dEnd, offEnd) {
+            let pts = []; let steps = Math.abs(dEnd - dStart) / 2;
+            for (let i = 0; i <= steps; i++) {
+                let t = i / steps; pts.push(getPtDetail(dStart + (dEnd - dStart) * t, offStart + (offEnd - offStart) * easeInOut(t), 0));
+            }
+            buildDoubleTrack(pts, true, 0); 
+        }
+        buildCrossover(600, -2, 680, 2); buildDepotBranch(700, 2, 1000, 8);  
+        buildDepotBranch(1500, -2, 1200, -8); buildCrossover(1550, -2, 1630, 2); 
+
+        [-2, 2, -9.2, 9.2].forEach(off => createBufferStop(-80, off, true)); 
+        [-2, 2].forEach(off => createBufferStop(57980, off, false));
+        [-2, 2].forEach(off => createBufferStop(61900, off, false));   
+    }
+
+    function createBufferStop(d, offset, facingForward = true) {
+        let pDetail = getPtDetail(d, offset); let group = new THREE.Group();
+        let main = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.2, 1.0), new THREE.MeshLambertMaterial({ color: 0xcc0000 }));
+        let s1 = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.2, 1.1), new THREE.MeshLambertMaterial({ color: 0xffffff })); s1.position.y = 0.3;
+        let s2 = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.2, 1.1), new THREE.MeshLambertMaterial({ color: 0xffffff })); s2.position.y = -0.3;
+        group.add(main, s1, s2);
+        group.position.set(pDetail.x, pDetail.y + 0.6, pDetail.z);
+        group.rotation.y = -pDetail.a + (facingForward ? 0 : Math.PI); 
+        scene.add(group);
+    }
+
+    function buildStationsAndProps() {
+        const platMat = new THREE.MeshLambertMaterial({ color: 0x828282 }); 
+        const geoIsland = new THREE.BoxGeometry(5.2, 1.2, 160);
+        const geoSide = new THREE.BoxGeometry(4.2, 1.2, 160); 
+        const geoPassing = new THREE.BoxGeometry(4.2, 1.2, 160);
+        const stopCanvas = document.createElement('canvas'); stopCanvas.width = 128; stopCanvas.height = 128;
+        const sCtx = stopCanvas.getContext('2d'); sCtx.fillStyle = '#ffffff'; sCtx.fillRect(0,0,128,128);
+        sCtx.strokeStyle = '#ff0000'; sCtx.lineWidth = 12; sCtx.strokeRect(6,6,116,116);
+        sCtx.fillStyle = '#ff0000'; sCtx.font = 'bold 80px sans-serif'; sCtx.textAlign = 'center'; sCtx.textBaseline = 'middle'; sCtx.fillText("停", 64, 68);
+        const stopMat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(stopCanvas), transparent: true });
+        const poleMat = new THREE.MeshLambertMaterial({ color: 0xcccccc });
+
+        function createStopSign(d, trackOffset, isForwardDir) {
+            let signOffset = isForwardDir ? trackOffset - 1.3 : trackOffset + 1.3;
+            let p = getPtDetail(d, signOffset);
+            const group = new THREE.Group();
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.8), poleMat); pole.position.y = 0.9;
+            const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.6), stopMat); sign.position.y = 1.6;
+            sign.rotation.y = -p.a + (isForwardDir ? 0 : Math.PI);
+            group.add(pole, sign); group.position.set(p.x, p.y + 0.1, p.z);
+            scene.add(group);
+        }
+
+        STATIONS.forEach(st => {
+            let p = getPtDetail(st.dist, 0); const group = new THREE.Group();
+            group.position.set(p.x, p.y + 0.6, p.z); group.rotation.y = -p.a;
+            let px = st.name.includes("FR12") ? 7.8 : 5.6;
+            if (st.type === "side" || st.type === "double_island" || st.type === "double_island_end") {
+                const p1 = new THREE.Mesh(geoSide, platMat); p1.position.x = -px;
+                const p2 = new THREE.Mesh(geoSide, platMat); p2.position.x = px;
+                group.add(p1, p2);
+            } else if (st.type === "island") { const p1 = new THREE.Mesh(geoIsland, platMat); p1.position.x = 0; group.add(p1); } 
+            else if (st.type === "passing_side") {
+                const p1 = new THREE.Mesh(geoPassing, platMat); p1.position.x = -9.6;
+                const p2 = new THREE.Mesh(geoPassing, platMat); p2.position.x = 9.6;
+                group.add(p1, p2);
+            }
+            scene.add(group);
+            let { L_in, R_in, L_out, R_out } = getBaseOffsets(st.dist);
+            [L_in, R_in, L_out, R_out].filter(o => o !== null).forEach(off => {
+                createStopSign(st.dist + 77, off, true); 
+                createStopSign(st.dist - 77, off, false); 
+            });
+
+            if (st.name.includes("FR21")) {
+                createStopSign(st.dist + 77, -9.2, true); createStopSign(st.dist + 77, 9.2, true);
+                createStopSign(st.dist - 77, -9.2, false); createStopSign(st.dist - 77, 9.2, false);
+            }
+        });
+    }
+
+    // --- ATP & Physics Logic ---
+    function applyBrakingCurve(currentLimit, targetLimit, distToStart, decelRate = DECEL_SERVICE) {
+        if (distToStart <= 0) return Math.min(currentLimit, targetLimit);
+        if (currentLimit <= targetLimit) return currentLimit;
+        let uMs = targetLimit / 3.6;
+        let aMs2 = decelRate / 3.6; 
+        let vMs = Math.sqrt(uMs*uMs + 2 * aMs2 * distToStart);
+        return Math.min(currentLimit, vMs * 3.6);
+    }
+
+    // --- 關鍵修正：軌道偏移與平滑移動 ---
+function getTrainOffset(d, type, dir) {
+        // 1. 終點橫渡線 (FR01, 0-450m)
+        if (d < 450) {
+            if (dir === 'down') {
+                if (type === 'local') {
+                    if (d < 300) return -2; 
+                    if (d > 380) return 2;  
+                    let t = (d - 300) / 80;
+                    return -2 + 4 * easeInOut(t);
+                }
+                if (type === 'express') {
+                    return 2; 
+                }
+            } else {
+                if (type === 'express') {
+                     if (d > 380) return -2;
+                     if (d < 300) return 2;
+                     let t = (d - 300) / 80;
+                     return 2 - 4 * easeInOut(t);
+                }
+                if (type === 'local') return -2; 
+            }
+        }
+        
+        // 2. 綾路北站 (FR21) (57650 ~ 58300)
+	    if (d >= 57650 && d <= 58300) {
+            if (dir === 'up' && type === 'express') {
+                return -2; 
+            }
+            if (dir === 'down' && type === 'express') {
+                if (d < 57720) return 2;
+                if (d > 57800) return -2;
+                let t = (d - 57720) / 80; 
+                return 2 - 4 * easeInOut(t); 
+            }                     
+   
+            let outerOff = 0;
+            if (d <= 57800) { 
+                let w = easeInOut((d - 57650)/150); outerOff = 2 + 7.2 * w; 
+            } else if (d <= 57980) { 
+                outerOff = 9.2; 
+            } else if (d <= 58230) { 
+                let w = easeInOut((d - 57980)/250); outerOff = 9.2 - 7.2 * w; 
+            } else { 
+                outerOff = 2; 
+            }
+            if (dir === 'down') return outerOff;
+            else return -outerOff;
+        }
+
+        // 3. 一般路段
+        let { L_in, R_in, L_out, R_out } = getBaseOffsets(d);
+        if (dir === 'down') { if (type === 'local' && R_out !== null) return R_out; return R_in; } 
+        else { if (type === 'local' && L_out !== null) return L_out; return L_in; }
+    }
+
+    function startGame() {
+        const sIdx = parseInt(document.getElementById('start-sel').value);
+        state.dir = document.getElementById('dir-sel').value;
+        state.type = document.getElementById('type-sel').value;
+        const emerOpt = ui.emerSel.value;
+        if (state.type === 'express' && !STATIONS[sIdx].exp) {
+            alert("錯誤：機場快速 (Express) 僅停靠特定大站，請重新選擇起始站。");
+            return;
+        }
+        let raw = (state.dir === 'down') ? STATIONS.slice(sIdx) : [...STATIONS].reverse().slice((STATIONS.length-1)-sIdx);
+        let validStops = 0;
+        for(let i=1; i < raw.length; i++) { if (state.type === 'local' || raw[i].exp) validStops++; if(validStops >= 3) break; }
+        if (validStops < 3) return alert(`剩餘停靠站不足 3 站，請選擇更早的站點出發！`);
+
+        state.route = [{ name: raw[0].name, dist: 0, data: raw[0], isStop: true }]; 
+        let stopCounter = 0;
+        for(let i=0; i<raw.length-1; i++) {
+            if(stopCounter >= 3) break;
+            let cur = raw[i], nxt = raw[i+1];
+            let shouldStop = (state.type === 'local') || nxt.exp;
+            state.route.push({ name: nxt.name, data: nxt, isStop: shouldStop });
+            if(shouldStop) stopCounter++;
+        }
+
+        let startDist = raw[0].dist;
+        state.d = (state.dir === 'down') ? startDist + 77 : startDist - 77;
+        state.active = true; state.v = 0; state.p = 0; state.b = 4; 
+        state.door = true; state.doorClosing = false;
+        state.idx = 0; state.stops = 0; state.atpLimit = 120; 
+
+        state.emer = { enabled: false, triggered: false, cleared: false, targetIdx: -1, triggerDist: 0, reactionTimer: 0, occTimer: 0, communicating: false };
+        if (emerOpt !== 'none') {
+            let hasEmer = (emerOpt === 'always') ? true : (Math.random() < 0.5);
+            if (hasEmer) {
+state.emer.enabled = true;
+// 計算起點與終點
+let startD = state.d;
+let finalNode = state.route[state.route.length - 1];
+let endD = (state.dir === 'down') ? finalNode.data.dist + 77 : finalNode.data.dist - 77;
+
+// 設定在路程 20% 到 80% 之間隨機觸發，避免剛發車或快到站時響起
+let totalDist = Math.abs(endD - startD);
+let randomOffset = (totalDist * 0.2) + Math.random() * (totalDist * 0.6);
+
+state.emer.triggerDist = (state.dir === 'down') ? startD + randomOffset : startD - randomOffset;
+            }
+        }
+
+initAudio(); // <--- 加入這行啟動音效引擎
+
+        ui.menu.style.display = 'none'; ui.overlay.style.display = 'none';
+        ui.door.innerText = "OPEN"; ui.door.style.color = "var(--color-err)";
+        ui.curr.innerText = state.route[0].name;
+        updateNextStopUI(); state.lastT = performance.now(); requestAnimationFrame(loop);
+    }
+
+    function getNextStopInfo() {
+        for (let i = state.idx + 1; i < state.route.length; i++) if (state.route[i].isStop) return state.route[i];
+        return { name: "END", data: { dist: state.d } }; 
+    }
+    function updateNextStopUI() {
+        let nextStop = getNextStopInfo();
+        ui.next.innerText = nextStop.name;
+        let targetPos = (state.dir === 'down') ? nextStop.data.dist + 77 : nextStop.data.dist - 77;
+        ui.dist.innerText = Math.floor(Math.abs(targetPos - state.d)) + " m";
+    }
+
+function loop(now) {
+    if(!state.active) return;
+    let dt = (now - state.lastT)/1000; if(dt > 0.1) dt = 0.1;
+    state.lastT = now;
+
+    // --- 新增：警醒裝置計時邏輯 ---
+    // 只有在非緊急狀況且車門關閉且速度大於 0 時才計算 (停車時通常不需要警醒)
+    // 或者您希望停車時也要按，可以去掉 && state.v !== 0
+    if (!state.emer.triggered && !state.door && !state.doorClosing) {
+        state.idleTime += dt;
+
+        // 超過 60 秒觸發
+        if (state.idleTime >= 60) {
+            state.vigilanceActive = true;
+        }
+
+        // 如果已觸發，開始倒數 5 秒
+        if (state.vigilanceActive) {
+            state.vigilanceTimer -= dt;
+            if (state.vigilanceTimer <= 0) {
+                gameOver("警醒裝置作動\n駕駛無反應 (Vigilance Timeout)", false);
+                return;
+            }
+        }
+    } else {
+        // 如果停車或開門，暫停或重置計時 (視規則而定，這裡設定為重置)
+        resetVigilance(); 
+    }
+    // ---------------------------
+
+        calcEnv(dt);
+        updateStatus();
+        checkEmergency(dt);
+
+        if (!(!state.door && !state.doorClosing)) {
+            let currentBc = (state.b === 9) ? 6.0 : (state.b / 8) * 4.5;
+            if (currentBc < 2.0) {
+                gameOver("操作違規\n車門未鎖閉時 BC 壓力不足\n(需維持 2.0 kPa 以上)", false);
+                return;
+            }
+        }
+
+// 1. 如果玩家已經把煞車推離 EB (b < 9)，就重設鎖定，恢復嚴格判定
+if (state.b < 9) {
+    state.emer.ebRequiredReset = false;
+}
+
+// 2. 只有在「非緊急狀態」且「手把已經重設過」的情況下，使用 EB 才會失敗
+if (!state.emer.triggered && state.b === 9 && !state.emer.communicating) {
+    if (state.emer.ebRequiredReset === false) {
+        gameOver("操作違規\n非緊急狀況不可使用緊急煞車 (EB)", false); 
+        return;
+    }
+}
+
+        if(state.door || state.doorClosing || (state.emer.triggered && state.v === 0 && !state.emer.cleared)) {
+            state.v = 0;
+            if(state.emer.communicating) {
+                state.emer.occTimer -= dt;
+                ui.msg.innerText = `📞 行控通話中...\n確認安全: ${Math.ceil(state.emer.occTimer)} 秒`;
+                ui.msg.style.display = 'block';
+                if(state.emer.occTimer <= 0) {
+                    state.emer.communicating = false; state.emer.cleared = true; 
+                    state.emer.triggered = false;
+		    state.emer.ebRequiredReset = true; 
+                    showMsg("✅ 通話結束\n防護無線解除，請繼續行駛");
+                    ui.lampAtp.classList.remove('radio');
+                }
+            }
+        } else {
+            let traction = 0;
+            if(state.p > 0 && state.b === 0) {
+                let r = Math.abs(state.v) / (130/3.6);
+                let f = Math.max(0.65, 1 - r*0.35); traction = (state.p/4) * PHY.MAX_TRAC * f;
+            }
+            let brakeRatio = state.b / 8; if (state.b === 9) brakeRatio = 1.3;
+            let brakeMax = brakeRatio * PHY.MAX_BRK;
+            let dragMag = PHY.ROLL + (PHY.AERO * state.v * state.v);
+            let dragForce = (state.v > 0) ? -dragMag : (state.v < 0 ? dragMag : 0);
+            let gradeF = PHY.MASS * PHY.G * (state.grade / 1000); 
+
+            let net = (state.v > 0) ? traction + dragForce - gradeF - brakeMax : traction + dragForce - gradeF + brakeMax;
+            if (Math.abs(state.v) < 0.05 && state.p === 0 && Math.abs(traction + dragForce - gradeF) <= brakeMax) { net = 0; state.v = 0; }
+
+            state.v += (net / PHY.MASS) * dt;
+            let deltaD = state.v * dt;
+            if (state.dir === 'down') state.d += deltaD; else state.d -= deltaD;
+
+            if(!state.emer.triggered && state.v*3.6 > state.atpLimit + 1) { gameOver("ATP OVERSPEED (超速)", false); return; }
+
+            let nextStop = getNextStopInfo();
+            let targetPos = (state.dir === 'down') ? nextStop.data.dist + 77 : nextStop.data.dist - 77;
+            let distToStop = (state.dir === 'down') ? (targetPos - state.d) : (state.d - targetPos);
+            
+            if (distToStop < -0.5) {
+                gameOver(`超過停車位置！\n超過 ${Math.abs(distToStop).toFixed(2)}m\n(嚴格限制：±0.5m)`, false); return;
+            }
+
+            if (state.idx < state.route.length - 1) {
+                let nextNode = state.route[state.idx+1];
+                let nodePos = (state.dir === 'down') ? nextNode.data.dist + 77 : nextNode.data.dist - 77;
+                let distToNode = (state.dir === 'down') ? (nodePos - state.d) : (state.d - nodePos);
+                if (distToNode < 0 && !nextNode.isStop) {
+                    state.idx++; showMsg(nextNode.name + " 通過"); ui.curr.innerText = nextNode.name;
+                }
+            }
+        }
+        renderGame(dt); updateUI(); updateAudio(); requestAnimationFrame(loop);
+    }
+
+function calcEnv(dt) {
+    let geo = getTrackGeometry(state.d);
+    state.grade = (state.dir === 'down') ? geo.grade : -geo.grade;
+    let d = state.d;
+    let maxLimit = 120;
+    let finalLimit = maxLimit;
+
+    // --- 0. 構建當下有效的限速區域列表 (Active Zones) ---
+    // 將靜態 SPEED_ZONES 複製出來，若為普通車則加入側線限速
+    let activeZones = [...SPEED_ZONES]; 
+    if (state.type === 'local') {
+        STATIONS.forEach(st => {
+            let stCode = st.name.split(' ')[0];
+            if (SIDING_STATIONS.includes(stCode) && !st.name.includes("FR21")) {
+                activeZones.push({ start: st.dist - 260, end: st.dist + 260, limit: 45 });
+            }
+        });
+    }
+
+// 根據車種設定長度：直達車(Express)通常較長，普通車(Local)較短
+// 你可以依照飛灣鐵路公司的編組需求自行調整數值
+const TRAIN_LEN = (state.type === 'express') ? 130 : 85;
+
+    // --- A. 計算「當前」的 ATP 速限 (紅針) ---
+    let searchDist = 2000;
+    let lookAheadPoints = [];
+    
+    activeZones.forEach(zone => {
+        let effStart, effEnd;
+        if (state.dir === 'down') {
+            effStart = zone.start - 5;
+            effEnd = zone.end + TRAIN_LEN;
+        } else {
+            effStart = zone.end + 5;
+            effEnd = zone.start - TRAIN_LEN;
+        }
+
+        let distToStart = (state.dir === 'down') ? (effStart - d) : (d - effStart);
+        let inZone = (state.dir === 'down') ? (d >= effStart && d <= effEnd) : (d <= effStart && d >= effEnd);
+
+        if (inZone) {
+            finalLimit = Math.min(finalLimit, zone.limit);
+        } else if (distToStart > 0 && distToStart < searchDist) {
+            lookAheadPoints.push({ dist: distToStart, limit: zone.limit });
+        }
+    });
+
+    let dynamicLimit = maxLimit;
+    lookAheadPoints.forEach(pt => {
+        dynamicLimit = Math.min(dynamicLimit, applyBrakingCurve(maxLimit, pt.limit, pt.dist));
+    });
+    state.atpLimit = Math.min(finalLimit, dynamicLimit);
+    if (state.door || state.doorClosing) state.atpLimit = 45;
+
+    // --- B. 計算 3 秒後的狀態 (預警用) ---
+    let predictTime = 3.0;
+    // 這裡使用物理加速度公式預測 3 秒後的速度
+    let tractionF = (state.p > 0 && state.b === 0) ? (state.p / 4) * PHY.MAX_TRAC : 0;
+    let brakeF = (state.b > 0) ? (state.b / 8) * PHY.MAX_BRK : 0;
+    if (state.b === 9) brakeF = PHY.MAX_BRK * 1.3;
+    let netAcc = (tractionF - brakeF - (PHY.MASS * PHY.G * state.grade / 1000)) / PHY.MASS;
+    
+    let v_future_ms = state.v + netAcc * predictTime;
+    let v_future_kph = v_future_ms * 3.6;
+    let deltaD_3s = state.v * predictTime + 0.5 * netAcc * predictTime * predictTime; // 更精確的位移預測
+    let d_future = (state.dir === 'down') ? (d + deltaD_3s) : (d - deltaD_3s);
+
+    // 計算 3 秒後位置的限速
+    let finalLimit_3s = maxLimit;
+    let lookAhead_3s = [];
+    
+    activeZones.forEach(zone => {
+        let effStart, effEnd;
+        if (state.dir === 'down') {
+            effStart = zone.start - 5;
+            effEnd = zone.end + TRAIN_LEN;
+        } else {
+            effStart = zone.end + 5;
+            effEnd = zone.start - TRAIN_LEN;
+        }
+
+        let distToStart_3s = (state.dir === 'down') ? (effStart - d_future) : (d_future - effStart);
+        let inZone_3s = (state.dir === 'down') ? (d_future >= effStart && d_future <= effEnd) : (d_future <= effStart && d_future >= effEnd);
+
+        if (inZone_3s) {
+            finalLimit_3s = Math.min(finalLimit_3s, zone.limit);
+        } else if (distToStart_3s > 0 && distToStart_3s < searchDist) {
+            lookAhead_3s.push({ dist: distToStart_3s, limit: zone.limit });
+        }
+    });
+
+    let dynamicLimit_3s = maxLimit;
+    lookAhead_3s.forEach(pt => {
+        dynamicLimit_3s = Math.min(dynamicLimit_3s, applyBrakingCurve(maxLimit, pt.limit, pt.dist));
+    });
+    let atpLimit_3s = Math.min(finalLimit_3s, dynamicLimit_3s);
+
+// --- [第五步修正] ATP 燈號顯示與優先級邏輯 ---
+    // 優先級順序：防護無線(紅) > ATP預警(黃) > 警醒裝置(綠) > 正常(灰)
+    
+    if (ui.lampAtp) {
+        // 1. 計算目前的 ATP 預警條件 (與原本邏輯相同)
+        let currentKph = state.v * 3.6;
+	// 條件A: 3秒後速度是否超過 "未來限速" 或 "當前限速"
+        let predictOverspeed = (v_future_kph > atpLimit_3s + 0.5) || (v_future_kph > state.atpLimit + 0.5);
+        // 條件B: 是否正在加速 (且速度 > 5km/h)
+        let isAccelerating = (v_future_kph > currentKph) && (currentKph > 5);
+
+        // 2. 開始判斷顯示優先級
+        
+        // [優先級 1 - 最高] 緊急狀況 / 防護無線
+        if (state.emer.triggered) {
+            // 這裡不執行任何 UI 變更，保留 checkEmergency() 設定的紅色樣式 (RADIO ALARM)
+            // 這樣確保紅色警告永遠不會被覆蓋
+        }
+        // [優先級 2] ATP 預警 (超速或加速中)
+        else if (predictOverspeed) {
+            ui.lampAtp.className = 'lamp warn'; // 強制設為黃燈樣式
+            ui.lampAtp.innerText = "ATP WARN";
+        }
+        // [優先級 3] 警醒裝置 (閒置過久)
+        // 只有在沒有緊急狀況、且 ATP 沒有警告時，才會顯示綠燈
+        else if (state.vigilanceActive) {
+            ui.lampAtp.className = 'lamp vigilance'; // 設為綠燈樣式 (需配合第一步的CSS)
+            ui.lampAtp.innerText = `VIGILANCE (${Math.ceil(state.vigilanceTimer)})`;
+        }
+        // [優先級 4 - 最低] 正常狀態
+        else {
+            ui.lampAtp.className = 'lamp'; // 恢復普通樣式
+            ui.lampAtp.innerText = "ATP NORM";
+        }
+    }
+}
+
+function renderGame(dt) {
+        const now = new Date();
+        const hours = now.getHours() + now.getMinutes()/60;
+        
+        // --- 修改開始：天色邏輯 ---
+        let r, g, b;
+
+        if (hours >= 6 && hours < 17) {
+            // 白天 (06:00 - 16:59) - 藍天
+            r = 0.53; g = 0.81; b = 0.92;
+        } else if (hours >= 17 && hours < 19) {
+            // 黃昏 (17:00 - 18:59) - 橘紅夕陽
+            r = 0.8; g = 0.5; b = 0.2;
+        } else {
+            // 晚上 (19:00 - 05:59) - 深藍黑夜
+            r = 0.05; g = 0.05; b = 0.1;
+        }
+
+        scene.background.setRGB(r, g, b);
+        // 讓霧氣顏色跟隨天空，視覺上會更自然
+        if(scene.fog) scene.fog.color.setRGB(r, g, b);
+        // --- 修改結束 ---
+
+        let offset = getTrainOffset(state.d, state.type, state.dir);
+        let p = getPtDetail(state.d, offset);
+        camera.position.set(p.x, p.y + 2.1, p.z);
+        let lookDist = (state.dir === 'down') ? state.d + 50 : state.d - 50;
+        let lookOffset = getTrainOffset(lookDist, state.type, state.dir);
+        let pLook = getPtDetail(lookDist, lookOffset);
+        if(state.v > 1) { let shake = (Math.random()-0.5) * 0.01 * (state.v/30); pLook.x += shake; pLook.y += shake; }
+        camera.lookAt(pLook.x, pLook.y + 2.1, pLook.z);
+        let nearStation = false;
+        for(let s of STATIONS) if (Math.abs(state.d - s.dist) < 150) { nearStation = true; break; }
+        ui.sign.style.display = nearStation ? 'block' : 'none';
+        renderer.render(scene, camera);
+    }
+
+	function checkEmergency(dt) {
+        // 1. 偵測是否觸發防護無線 (邏輯不變)
+        if (state.emer.enabled && !state.emer.triggered) {
+            if (Math.abs(state.d - state.emer.triggerDist) < 10) {
+                state.emer.triggered = true;
+                state.emer.reactionTimer = 2.0;
+                ui.lampAtp.className = 'lamp radio'; 
+                ui.lampAtp.innerText = "RADIO ALARM";
+                ui.rLim.classList.add('radio-flash');
+            }
+        }
+
+        // 2. 監控警報狀態
+        if (state.emer.triggered && !state.emer.cleared) {
+            state.atpLimit = 0; // 強制速限歸零
+
+            // --- 修改重點開始 ---
+            
+            // 情況 A：列車已經停止 (速度為 0)
+            // 只要車停了，無論是在哪個煞車檔位 (B1~B8 或 EB)，都視為安全，不扣分
+            if (state.v === 0) {
+                if (!state.emer.communicating) {
+                    ui.msg.innerText = "⛔ 列車已緊急停車 ⛔\n請點擊螢幕或按 [Enter] 聯繫行控";
+                    ui.msg.style.display = 'block';
+                }
+                // 這裡不檢查 reactionTimer，所以只要停下來就不會 Game Over
+            } 
+            // 情況 B：列車還在移動
+            else {
+                // 倒數計時
+                if (state.emer.reactionTimer > 0) {
+                    state.emer.reactionTimer -= dt;
+                } 
+                // 計時結束且車還在動，檢查是否拉了 EB
+                else if (state.b < 9) {
+                    // 如果沒拉 EB 且車還在動 -> 失敗
+                    gameOver("防護無線警報響起\n未在 2 秒內使用緊急煞車 (EB)\n或未將列車完全停下", false);
+                }
+            }
+            // --- 修改重點結束 ---
+
+        } else { 
+            ui.rLim.classList.remove('radio-flash'); 
+        }
+    }
+
+function inputDoor() {
+        // 確保門在動作中時，無法重複按鍵 (新增了 state.doorOpening 鎖定)
+        if(state.doorClosing || state.doorOpening || (state.emer.triggered && !state.emer.cleared)) return;
+
+        if(state.door) { 
+            // ===============================
+            // 1. 關門程序 (月台音樂 -> 車門警示音)
+            // ===============================
+            state.doorClosing = true; 
+            state.doorTimer = 20; // 包含 16.6 秒月台音樂 + 站內緩衝時間
+            ui.msg.innerText = "⚠️ 月台發車鈴聲響起..."; ui.msg.style.display = "block";
+            ui.lampDoor.classList.add('on');
+            
+            // 恢復播放你原本的月台出發音樂 (sndWarn)
+            if(sndWarn) { sndWarn.currentTime = 0; sndWarn.play().catch(()=>{}); } 
+            
+            if(state.timerInt) clearInterval(state.timerInt);
+            state.timerInt = setInterval(() => {
+                state.doorTimer--;
+                
+                // ★ 關鍵：倒數到 3 秒時，播放車上關門警示音
+                if (state.doorTimer === 3) {
+                    ui.msg.innerText = "⚠️ 車門關閉中...";
+                    playTrainDoorChime(); 
+                }
+
+                // 倒數結束，車門完全鎖閉
+                if(state.doorTimer <= 0) {
+                    clearInterval(state.timerInt);
+                    state.door = false; state.doorClosing = false;
+                    ui.lampDoor.classList.remove('on');
+                    ui.door.innerText = "CLSD"; ui.door.style.color = "var(--color-ok)";
+                    ui.msg.innerText = "🟢 發車！ (READY)";
+                    setTimeout(() => ui.msg.style.display = "none", 2000);
+                }
+            }, 1000);
+
+        } else {
+            // ===============================
+            // 2. 開門程序 (車門警示音 -> 3秒後開門)
+            // ===============================
+            if(Math.abs(state.v) < 0.05) {
+                let nextStop = getNextStopInfo();
+                let targetPos = (state.dir === 'down') ? nextStop.data.dist + 77 : nextStop.data.dist - 77;
+                let diff = (state.dir === 'down') ? (targetPos - state.d) : (state.d - targetPos);
+                
+                if (Math.abs(diff) > 0.5) {
+                    let statusStr = diff > 0 ? "未達" : "超過";
+                    gameOver(`停車誤差過大！\n${statusStr} ${Math.abs(diff).toFixed(2)}m\n(嚴格限制：±0.5m)`, false);
+                    return;
+                }
+                
+                let cm = Math.round(diff * 100);
+                let resultText = (cm === 0) ? "🔥 完美停車 0 cm 🔥" : (cm > 0 ? `未達 ${cm} cm` : `超過 ${Math.abs(cm)} cm`);
+                
+                // ★ 進入「開門中」的 3 秒過渡狀態
+                state.doorOpening = true; 
+                state.door = true; // 系統先判定門已解鎖，鎖死動力
+                ui.lampDoor.classList.add('on');
+                ui.door.innerText = "OPNG"; ui.door.style.color = "var(--color-atp)"; // 顯示 OPNG (Opening)
+                ui.msg.innerText = "⚠️ 車門開啟中..."; ui.msg.style.display = "block";
+                
+                // 播放與關門完全相同的 3 秒警示音
+                playTrainDoorChime(); 
+                
+                // 等待 3 秒後，車門才真正完全打開並結算成績
+                setTimeout(() => {
+                    state.doorOpening = false;
+                    ui.lampDoor.classList.remove('on');
+                    ui.door.innerText = "OPEN"; ui.door.style.color = "var(--color-err)";
+                    ui.msg.style.display = "none";
+
+                    state.stops++;
+                    if (state.stops >= 3) {
+                        gameOver(`檢定通過！\n最終站誤差: ${resultText}`, true);
+                    } else {
+                        state.idx++; showMsg(`停靠成功\n${resultText}`);
+                        updateNextStopUI(); ui.curr.innerText = state.route[state.idx].name;
+                    }
+                }, 3000);
+
+            } else {
+                showMsg("行駛中無法開門");
+            }
+        }
+    }
+
+    function confirmRadio() {
+        if (state.emer.triggered && !state.emer.cleared && !state.emer.communicating && state.v === 0) {
+            state.emer.communicating = true; state.emer.occTimer = 10;
+        }
+    }
+function resetVigilance() {
+    state.idleTime = 0;
+    state.vigilanceActive = false;
+    state.vigilanceTimer = 5.0;
+}
+    function inputPower(delta) {
+	resetVigilance(); // <--- 新增這一行
+        if(state.door || state.doorClosing) return; if(state.b > 0) return; 
+        let newP = state.p + delta; if(newP > 4) newP = 4; if(newP < 0) newP = 0;
+        state.p = newP; updateUI();
+    }
+    function inputBrake(delta) {
+	resetVigilance(); // <--- 新增這一行
+        let newB = state.b + delta; if(newB > 9) newB = 9; if(newB < 0) newB = 0;
+        state.b = newB; if(state.b > 0) state.p = 0; updateUI();
+    }
+    window.addEventListener('keydown', (e) => {
+        if(!state.active) return;
+	resetVigilance(); // <--- 新增這一行：任何按鍵都會重置
+        switch(e.key.toLowerCase()) {
+            case 'a': case 'arrowleft': inputPower(1); break;
+            case 'd': case 'arrowright': inputPower(-1); break;
+            case 'w': case 'arrowup': inputBrake(1); break;
+            case 's': case 'arrowdown': inputBrake(-1); break;
+            case ' ': inputDoor(); break;
+            case 'enter': confirmRadio(); break;
+        }
+    });
+    const gameCanvas = document.getElementById('game-canvas');
+    gameCanvas.addEventListener('click', (e) => {
+	resetVigilance(); // <--- 新增這一行：點擊螢幕重置
+        if(state.emer.triggered && !state.emer.cleared && state.v === 0) confirmRadio();
+        else if(Math.abs(state.v) < 0.1) inputDoor();
+    });
+    
+    function updateStatus() {
+        let msg = "", color = "#888";
+        if(state.doorClosing) { msg=`⏳ 關門中 (${state.doorTimer})`; color="var(--color-atp)"; }
+        else if(state.door) { msg="⛔ 車門開啟"; color="var(--color-err)"; }
+        else if(state.b > 0) { msg = (state.b === 9) ? `🚨 緊急煞車 (EB)` : `⛔ 煞車 (B${state.b})`; color="var(--color-err)"; }
+        else if(state.p === 0) { msg="⚪ 惰行 (Coasting)"; color="#fff"; }
+        else { msg=`🟢 牽引 (P${state.p})`; color="var(--color-ok)"; }
+        if(state.emer.triggered && !state.emer.cleared) {
+            if (state.emer.communicating) { msg = "📞 通話確認中..."; color = "var(--color-atp)"; }
+            else { msg = "⚠️ 防護無線動作"; color = "var(--color-radio)"; }
+        }
+        ui.status.innerText = msg; ui.status.style.color = color; ui.status.style.borderColor = color;
+    }
+    function updateUI() {
+        let kph = state.v * 3.6;
+        ui.spd.innerText = Math.floor(Math.abs(kph));
+        let limPct = state.atpLimit / 140; if(limPct>1) limPct=1;
+        ui.rLim.style.strokeDasharray = `${limPct * CIRCUMFERENCE} 1000`;
+        let spdPct = Math.abs(kph) / 140; if(spdPct>1) spdPct=1;
+        ui.rSpd.style.strokeDasharray = `${spdPct * CIRCUMFERENCE} 1000`;
+        updateNextStopUI();
+        let nextStop = getNextStopInfo();
+        let targetPos = (state.dir === 'down') ? nextStop.data.dist + 77 : nextStop.data.dist - 77;
+        let diff = (state.dir === 'down') ? (targetPos - state.d) : (state.d - targetPos);
+        if (Math.abs(diff) <= 2.5) {
+            ui.gaugeDot.style.display = 'block';
+            let pct = ((diff + 2.5) / 5.0) * 100; if(pct < 0) pct = 0; if(pct > 100) pct = 100;
+            ui.gaugeDot.style.left = pct + "%";
+            ui.gaugeDot.style.background = (Math.abs(diff) <= 0.5) ? "#00ff00" : "#ff0000";
+        } else ui.gaugeDot.style.display = 'none';
+        let bcVal = (state.b/8)*4.5; if(state.b === 9) bcVal = 6.0; ui.bc.innerText = bcVal.toFixed(1);
+        ui.lim.innerText = Math.floor(state.atpLimit);
+        ui.grad.innerText = state.grade.toFixed(1) + "‰";
+        ui.grad.style.color = (state.grade > 0) ? "var(--color-err)" : ((state.grade < 0) ? "var(--color-ok)" : "#eee");
+        ui.hPwr.style.top = (90 - state.p*20) + "%";
+        let bTop = 90 - state.b*10; ui.hBrk.style.top = bTop + "%";
+    }
+    function showMsg(txt) { ui.msg.innerText = txt; ui.msg.style.display = 'block'; setTimeout(()=>ui.msg.style.display='none', 2000); }
+	function gameOver(reason, win=false) {
+        state.active = false; 
+        clearInterval(state.timerInt);
+        
+        // ★ 核心修復：立刻強制切斷所有動態合成音效與月台音樂
+        if (audioCtx && masterGain) {
+            masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.05); // 0.05秒內音量歸零
+        }
+        if (sndWarn && !sndWarn.paused) {
+            sndWarn.pause();
+            sndWarn.currentTime = 0;
+        }
+
+        ui.overlay.style.display = 'flex'; ui.menu.style.display = 'none';
+        ui.resBox.style.display = 'block'; ui.resBox.className = win ? "box win-box" : "box fail-box";
+        document.getElementById('res-title').innerText = win ? "檢定通過" : "檢定失敗";
+        document.getElementById('res-desc').innerText = reason;
+        document.getElementById('res-title').style.color = win ? "var(--color-ok)" : "var(--color-err)";
+    }
+    function setupDraggable(handleId, type) {
+        const handle = document.getElementById(handleId); const track = handle.parentElement;
+        function handleDrag(e) {
+	    resetVigilance(); // <--- 新增這一行
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const rect = track.getBoundingClientRect();
+            let pct = 1 - ((clientY - rect.top) / rect.height); if (pct < 0) pct = 0; if (pct > 1) pct = 1;
+            if (type === 'power') { if (state.door || state.doorClosing) return; state.p = Math.round(pct * 4); if (state.p > 0) state.b = 0; } 
+            else if (type === 'brake') { state.b = Math.round(pct * 9); if (state.b > 0) state.p = 0; }
+            updateUI();
+        }
+        track.addEventListener('touchstart', (e) => { e.preventDefault(); handleDrag(e); }, {passive: false});
+        track.addEventListener('touchmove', (e) => { e.preventDefault(); handleDrag(e); }, {passive: false});
+        track.addEventListener('mousedown', (e) => {
+            handleDrag(e); const onMouseMove = (me) => handleDrag(me); document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', () => { document.removeEventListener('mousemove', onMouseMove); }, {once: true});
+        });
+    }
+    setupDraggable('handle-pwr', 'power'); setupDraggable('handle-brk', 'brake');
+
+// 提早渲染選單與時鐘，不必等 3D 引擎下載完
+    document.addEventListener('DOMContentLoaded', () => {
+        const sel = document.getElementById('start-sel');
+        STATIONS.forEach((s, i) => { let o = document.createElement('option'); o.value = i; o.innerText = s.name; sel.appendChild(o); });
+        setInterval(()=>document.getElementById('ui-clock').innerText=new Date().toLocaleTimeString('zh-TW',{hour12:false}), 1000);
+    });
+
+    // 只有 3D 引擎需要等完整載入後才初始化
+    window.onload = () => {
+        init3D();
+    };
+</script>
+</body>
+</html>

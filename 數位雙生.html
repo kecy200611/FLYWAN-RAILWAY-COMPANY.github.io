@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>飛灣鐵路數位雙生 (Digital Twin)</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #87CEEB; color: #c9d1d9; font-family: "Microsoft JhengHei", sans-serif; }
+        #info { 
+            position: absolute; top: 15px; left: 15px; z-index: 100; pointer-events: none; 
+            background: rgba(13, 17, 23, 0.85); padding: 15px; border-radius: 8px; border: 1px solid #30363d; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        h2 { margin: 0 0 10px 0; font-size: 20px; color: #00ccff; }
+        p { margin: 5px 0; font-size: 14px; color: #ccc; }
+        .highlight { color: #ffaa00; font-weight: bold; }
+
+        #control-panel { 
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 100; 
+            background: rgba(13, 17, 23, 0.95); padding: 15px 25px; border-radius: 12px; width: 90%; max-width: 800px;
+            border: 1px solid #555; display: flex; align-items: center; gap: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8); 
+        }
+        select { background: #222; color: #fff; border: 1px solid #555; padding: 10px; border-radius: 6px; font-size: 16px; cursor: pointer; }
+        input[type="range"] { flex-grow: 1; cursor: pointer; height: 8px; }
+        .val-display { font-weight: bold; color: #00ff00; min-width: 140px; font-family: monospace; font-size: 16px; }
+        button { 
+            background: #00cc00; color: #000; border: none; padding: 10px 20px; 
+            border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px; 
+            transition: background 0.2s;
+        }
+        button:hover { background: #00ff00; }
+        button.paused { background: #888; color: #fff; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <div id="info">
+        <h2>飛灣鐵路 數位雙生系統</h2>
+        <p>✔ 同步遊戲場景 (Game Level Geometry)</p>
+        <p>✔ 完整軌道/坡度/橋墩配置</p>
+        <p>✔ 包含 22 個車站與停車標</p>
+        <p class="highlight">操作：左鍵旋轉 / 右鍵平移 / 滾輪縮放</p>
+    </div>
+
+    <div id="control-panel">
+        <select id="cam-mode-select">
+            <option value="0">自由鳥瞰視角 (Free Cam)</option>
+            <option value="1">駕駛 1: 下行 普通 (各站停靠)</option>
+            <option value="2">駕駛 2: 下行 快速 (直達綾路)</option>
+            <option value="3">駕駛 3: 上行 普通 (各站停靠)</option>
+            <option value="4">駕駛 4: 上行 快速 (直達工業區)</option>
+        </select>
+        <button id="btn-play">播放中</button>
+        <input type="range" id="dist-slider" min="-80" max="63000" value="0" step="1">
+        <div class="val-display">里程: <span id="dist-val">0</span> m</div>
+    </div>
+
+    <script>
+        // --- 1. 核心資料 (來自 game.html) ---
+        const STATIONS = [
+            { name: "FR01 飛灣工業區", dist: 0, type: "double_island", exp: true }, 
+            { name: "FR02 飛灣港", dist: 8400, type: "passing_side", exp: false },
+            { name: "FR03 物流中心", dist: 9700, type: "side", exp: false },
+            { name: "FR04 飛灣郵輪港", dist: 10900, type: "double_island", exp: true },
+            { name: "FR05 濱江商務區", dist: 18100, type: "side", exp: false },
+            { name: "FR06 市民廣場", dist: 19600, type: "passing_side", exp: false },
+            { name: "FR07 文化中心", dist: 20900, type: "side", exp: false },
+            { name: "FR08 飛灣新站", dist: 22800, type: "double_island", exp: true },
+            { name: "FR09 科創園", dist: 25100, type: "passing_side", exp: false },
+            { name: "FR10 飛灣學區", dist: 26300, type: "side", exp: false },
+            { name: "FR11 飛灣大道", dist: 28000, type: "island", exp: false },
+            { name: "FR12 飛灣公園", dist: 29600, type: "double_island", exp: true },
+            { name: "FR13 錦湖", dist: 31000, type: "side", exp: false },
+            { name: "FR14 鷺島", dist: 31500, type: "side", exp: false },
+            { name: "FR15 空港新城", dist: 34300, type: "island", exp: false },
+            { name: "FR16 飛灣機場", dist: 39200, type: "double_island", exp: true },
+            { name: "FR17 翡翠花園", dist: 44400, type: "side", exp: false },
+            { name: "FR18 紫荊苑", dist: 47600, type: "passing_side", exp: false },
+            { name: "FR19 御景新村", dist: 55800, type: "island", exp: false },
+            { name: "FR20 自然保育中心", dist: 57200, type: "side", exp: false },
+            { name: "FR21 綾路北站", dist: 59000, type: "double_island_end", exp: true },
+            { name: "FR22 全京大道", dist: 60200, type: "island", exp: false }
+        ];
+        const TOTAL_DIST = 63000;
+
+        // --- 2. 場景初始化 ---
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x87CEEB, 0.00015);
+        scene.background = new THREE.Color(0x87CEEB); 
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 60000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.body.appendChild(renderer.domElement);
+        
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        dirLight.position.set(200, 500, 200);
+        scene.add(dirLight);
+
+        // --- 3. 數學與地形算法 (完全移植 game.html) ---
+        function easeInOut(t) { return t <= 0 ? 0 : (t >= 1 ? 1 : (1 - Math.cos(Math.PI * t)) / 2); }
+        function easeGrade(t) {
+            if (t <= 0) return 0; if (t >= 1) return 1;
+            const k = 0.2; 
+            if (t < k) return (t * t) / (2 * k * (1 - k));
+            else if (t < 1 - k) return (t - 0.5 * k) / (1 - k);
+            else { const endT = 1 - t; return 1 - (endT * endT) / (2 * k * (1 - k)); }
+        }
+
+        function createNoiseTexture() {
+            const size = 64;
+            const data = new Uint8Array(size * size * 4);
+            for (let i = 0; i < size * size * 4; i += 4) {
+                const v = Math.floor(Math.random() * 80) + 120;
+                const varI = Math.random() > 0.8 ? 50 : 0;
+                data[i] = v - varI; data[i + 1] = v - varI; data[i + 2] = v - varI; data[i + 3] = 255;
+            }
+            const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.needsUpdate = true;
+            return tex;
+        }
+
+        function getSmoothY(d) {
+            const yMap = [
+                { s: 0, e: 9800, y1: 10, y2: 10 }, 
+                { s: 9800, e: 10650, y1: 10, y2: -10 },      
+                { s: 10650, e: 28650, y1: -10, y2: -10 }, 
+                { s: 28650, e: 29350, y1: -10, y2: 0 },      
+                { s: 29350, e: 31750, y1: 0, y2: 0 }, 
+                { s: 31750, e: 32420, y1: 0, y2: -10 },      
+                { s: 32420, e: 40200, y1: -10, y2: -10 }, 
+                { s: 40200, e: 41540, y1: -10, y2: 10 },     
+                { s: 41540, e: 47850, y1: 10, y2: 10 }, 
+                { s: 47850, e: 48520, y1: 10, y2: 0 },       
+                { s: 48520, e: 63000, y1: 0, y2: 0 }         
+            ];
+            for (let m of yMap) {
+                if (d >= m.s && d <= m.e) {
+                    return m.y1 === m.y2 ? m.y1 : m.y1 + (m.y2 - m.y1) * easeGrade((d - m.s) / (m.e - m.s));
+                }
+            }
+            return d < 0 ? 10 : 0;
+        }
+
+        // --- 4. 軌道生成 (Geometry Generation) ---
+        const pathPoints = [];
+        let currX = 0, currZ = 0, currA = 0;
+        for (let d = -80; d <= TOTAL_DIST; d += 2) {
+            let rate = 0;
+            if (d >= 10300 && d <= 10771) rate = 1/600; if (d >= 19000 && d <= 19471) rate = 1/600; 
+            if (d >= 29900 && d <= 30528) rate = -1/600; if (d >= 30600 && d <= 30914) rate = 1/600; 
+            if (d >= 33700 && d <= 34014) rate = 1/600; if (d >= 39500 && d <= 40128) rate = 1/600; 
+            currA += rate * 2; currX += Math.sin(currA) * 2; currZ -= Math.cos(currA) * 2;
+            pathPoints.push({ d, x: currX, y: getSmoothY(d), z: currZ, a: currA, rate: rate });
+        }
+
+        function getPtDetail(targetD, offset = 0, yDrop = 0) {
+            let idx = Math.floor((targetD + 80) / 2);
+            if (idx < 0) idx = 0; if (idx >= pathPoints.length) idx = pathPoints.length - 1;
+            let p1 = pathPoints[idx]; let p2 = (idx < pathPoints.length - 1) ? pathPoints[idx+1] : p1;
+            let ratio = (targetD - p1.d) / 2; if(ratio < 0) ratio = 0; if(ratio > 1) ratio = 1;
+            let interpA = p1.a + (p2.a - p1.a) * ratio;
+            let nx = Math.cos(interpA), nz = Math.sin(interpA);
+            return { 
+                d: targetD, a: interpA, 
+                x: (p1.x + (p2.x - p1.x) * ratio) + nx * offset, 
+                y: (p1.y + (p2.y - p1.y) * ratio) - yDrop, 
+                z: (p1.z + (p2.z - p1.z) * ratio) + nz * offset, 
+                nx: nx, nz: nz
+            };
+        }
+
+        function getBaseOffsets(d) {
+            let L_in = -2, R_in = 2, L_out = null, R_out = null;
+            if (d >= 28700 && d <= 30100) {
+                let w_main = 0;
+                if (d < 28850) w_main = easeInOut((d - 28700)/150);
+                else if (d > 29900) w_main = 1 - easeInOut((d - 29900)/200); else w_main = 1;
+                L_in = -2 - 2.2 * w_main; R_in = 2 + 2.2 * w_main;  
+                let absDiff = Math.abs(d - 29600);
+                if (absDiff <= 250) {
+                    let w_out = easeInOut((250 - absDiff)/150); if (absDiff < 100) w_out = 1;
+                    L_out = L_in - 7.2 * w_out; R_out = R_in + 7.2 * w_out; 
+                }
+            }
+            for (let st of STATIONS) {
+                if (st.name.includes("FR21") || st.name.includes("FR12")) continue; 
+                let absDiff = Math.abs(d - st.dist);
+                if (absDiff > 250) continue;
+                let w = easeInOut((250 - absDiff)/150); if (absDiff < 100) w = 1;
+                if (st.type === 'island') { L_in = -2 - 2.1*w; R_in = 2 + 2.1*w; }
+                else if (st.type === 'passing_side') { L_out = -2 - 4.0*w; R_out = 2 + 4.0*w; }
+                else if (st.type === 'double_island') { L_out = -2 - 7.2*w; R_out = 2 + 7.2*w; }
+            }
+            return { L_in, R_in, L_out, R_out };
+        }
+
+        function createContinuousWorld() {
+            const positions = [], colors = [], uvs = [];
+            const noiseTex = createNoiseTexture();
+            const addQuad = (v1, v2, v3, v4, colHex, isGround) => {
+                let c = new THREE.Color(colHex);
+                let n = (Math.random() - 0.5) * 0.15;
+                let r = Math.max(0, c.r + n), g = Math.max(0, c.g + n), b = Math.max(0, c.b + n);
+                positions.push(v1.x,v1.y,v1.z, v2.x,v2.y,v2.z, v3.x,v3.y,v3.z);
+                positions.push(v1.x,v1.y,v1.z, v3.x,v3.y,v3.z, v4.x,v4.y,v4.z);
+                for(let i=0; i<6; i++) colors.push(r, g, b);
+                if(isGround) { uvs.push(0,0, 1,0, 1,1,  0,0, 1,1, 0,1); } else { uvs.push(0,0, 0,0, 0,0, 0,0, 0,0, 0,0); }
+            };
+            const pt = (p, nx, nz, off, y) => ({ x: p.x + nx*off, y: y, z: p.z + nz*off });
+            function getBoundsAt(d) {
+                let { L_in, R_in, L_out, R_out } = getBaseOffsets(d);
+                let minO = L_out !== null ? L_out : L_in; let maxO = R_out !== null ? R_out : R_in;
+                if (d >= 58700 && d <= 59400) { minO = Math.min(minO, -9.5); maxO = Math.max(maxO, 9.5); }
+                if (d >= 650 && d <= 1050) {
+                    let w = 0; if (d < 700) w = easeInOut((d - 650)/50); else if (d > 1000) w = 1 - easeInOut((d - 1000)/50); else w = 1;
+                    maxO = Math.max(maxO, 2 + 6.5 * w);
+                }
+                if (d >= 1150 && d <= 1550) {
+                    let w = 0; if (d < 1200) w = easeInOut((d - 1150)/50); else if (d > 1500) w = 1 - easeInOut((d - 1500)/50); else w = 1;
+                    minO = Math.min(minO, -2 - 6.5 * w);
+                }
+                return { wL: minO - 4.0, wR: maxO + 4.0 };
+            }
+            function getWallTop(y) { return y >= 0 ? y + 1.2 : (y >= -6 ? 0.5 : y + 6.0); }
+            const pillarGeo = new THREE.BoxGeometry(1.2, 1, 1.2);
+            const pillarMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+
+            for (let i = 0; i < pathPoints.length - 10; i += 10) { 
+                let p1 = pathPoints[i], p2 = pathPoints[i+10];
+                let b1 = getBoundsAt(p1.d), b2 = getBoundsAt(p2.d);
+                let nx1 = Math.cos(p1.a), nz1 = Math.sin(p1.a); let nx2 = Math.cos(p2.a), nz2 = Math.sin(p2.a);
+                let wt1 = getWallTop(p1.y), wt2 = getWallTop(p2.y);
+                let bed1 = p1.y - 0.1, bed2 = p2.y - 0.1; 
+                addQuad(pt(p1,nx1,nz1,b1.wR,bed1), pt(p2,nx2,nz2,b2.wR,bed2), pt(p2,nx2,nz2,b2.wL,bed2), pt(p1,nx1,nz1,b1.wL,bed1), 0x4a4a4a, true);
+                addQuad(pt(p1,nx1,nz1,b1.wL,bed1), pt(p2,nx2,nz2,b2.wL,bed2), pt(p2,nx2,nz2,b2.wL,wt2), pt(p1,nx1,nz1,b1.wL,wt1), 0x777777, false);
+                addQuad(pt(p1,nx1,nz1,b1.wR,wt1), pt(p2,nx2,nz2,b2.wR,wt2), pt(p2,nx2,nz2,b2.wR,bed2), pt(p1,nx1,nz1,b1.wR,bed1), 0x777777, false);
+                if (p1.y < -5) addQuad(pt(p1,nx1,nz1,b1.wL,wt1), pt(p2,nx2,nz2,b2.wL,wt2), pt(p2,nx2,nz2,b2.wR,wt2), pt(p1,nx1,nz1,b1.wR,wt1), 0x333333, false);
+                if(p1.y >= -5) {
+                    let gY = -2.0; 
+                    let outL1 = b1.wL - 0.5, outR1 = b1.wR + 0.5; let outL2 = b2.wL - 0.5, outR2 = b2.wR + 0.5;
+                    addQuad(pt(p1,nx1,nz1,-500,gY), pt(p2,nx2,nz2,-500,gY), pt(p2,nx2,nz2,outL2 + 1.0,gY), pt(p1,nx1,nz1,outL1 + 1.0,gY), 0x2d4c1e, true);
+                    addQuad(pt(p1,nx1,nz1,outR1 - 1.0,gY), pt(p2,nx2,nz2,outR2 - 1.0,gY), pt(p2,nx2,nz2,500,gY), pt(p1,nx1,nz1,500,gY), 0x2d4c1e, true);
+                    if (bed1 > gY + 0.5) {
+                        addQuad(pt(p1,nx1,nz1,outL1+1.0, gY), pt(p2,nx2,nz2,outL2+1.0, gY), pt(p2,nx2,nz2,outR2-1.0, gY), pt(p1,nx1,nz1,outR1-1.0, gY), 0x2d4c1e, true);
+                        if (i % 40 === 0 && bed1 > gY + 3.0) {
+                            let h = bed1 - gY; let mesh = new THREE.Mesh(pillarGeo, pillarMat);
+                            mesh.scale.set(1, h, 1); mesh.position.set(p1.x, gY + h/2, p1.z); mesh.rotation.y = -p1.a; scene.add(mesh);
+                        }
+                    }
+                }
+            }
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+            geo.computeVertexNormals();
+            scene.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, map: noiseTex })));
+        }
+        createContinuousWorld();
+
+        // --- 5. 軌道與道岔 (Track System) ---
+        const trackShapes = { PathA: [], PathB: [], PathC: [], PathD: [], Pocket: [] };
+        let activeT = { PathA: null, PathB: null, PathC: null, PathD: null, Pocket: null };
+        function commitTrack(id, detail) {
+            if (detail !== null) { if (!activeT[id]) activeT[id] = []; activeT[id].push(detail); } 
+            else { if (activeT[id]) { trackShapes[id].push(activeT[id]); activeT[id] = null; } }
+        }
+        for (let i = 0; i < pathPoints.length; i++) {
+            let p = pathPoints[i];
+            let { L_in, R_in, L_out, R_out } = getBaseOffsets(p.d);
+            let offA = null, offB = null, offC = null, offD = null, offP = null;
+            if (p.d <= 59080) { offA = L_in; offB = R_in; }
+            if (p.d >= 58750) {
+                if (p.d <= 58900) { let w = easeInOut((p.d - 58750)/150); offC = -2 - 7.2*w; offD = 2 + 7.2*w; }
+                else if (p.d <= 59080) { offC = -9.2; offD = 9.2; }
+                else if (p.d <= 59330) { let w = easeInOut((p.d - 59080)/250); offC = -9.2 + 7.2*w; offD = 9.2 - 7.2*w; }
+                else { offC = L_in; offD = R_in; }
+            } else { offC = L_out; offD = R_out; }
+            if (p.d >= 28948 && p.d <= 29152) offP = 0;
+            commitTrack('PathA', offA !== null ? getPtDetail(p.d, offA) : null);
+            commitTrack('PathB', offB !== null ? getPtDetail(p.d, offB) : null);
+            commitTrack('PathC', offC !== null ? getPtDetail(p.d, offC) : null);
+            commitTrack('PathD', offD !== null ? getPtDetail(p.d, offD) : null);
+            commitTrack('Pocket', offP !== null ? getPtDetail(p.d, offP) : null);
+        }
+        ['PathA','PathB','PathC','PathD','Pocket'].forEach(id => commitTrack(id, null));
+
+        const railMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+        function buildDoubleTrack(ptsDetail, generateSlab = true, elevate = 0) {
+            if(ptsDetail.length < 2) return;
+            const leftVecs = [], rightVecs = [];
+            for(let i=0; i<ptsDetail.length; i+=2) { 
+                let pt = ptsDetail[i];
+                leftVecs.push(new THREE.Vector3(pt.x + pt.nx * (-0.7175), pt.y + 0.1 + elevate, pt.z + pt.nz * (-0.7175)));
+                rightVecs.push(new THREE.Vector3(pt.x + pt.nx * (0.7175), pt.y + 0.1 + elevate, pt.z + pt.nz * (0.7175)));
+            }
+            const group = new THREE.Group();
+            group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(leftVecs), parseInt(ptsDetail.length/4), 0.08, 4, false), railMat));
+            group.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rightVecs), parseInt(ptsDetail.length/4), 0.08, 4, false), railMat));
+            scene.add(group);
+        }
+        ['PathA','PathB','PathC','PathD','Pocket'].forEach(id => { trackShapes[id].forEach(arr => buildDoubleTrack(arr, true, 0)); });
+
+        function buildCrossover(dStart, offStart, dEnd, offEnd) {
+            let pts = []; let steps = Math.abs(dEnd - dStart) / 2;
+            for (let i = 0; i <= steps; i++) {
+                let t = i / steps; pts.push(getPtDetail(dStart + (dEnd - dStart) * t, offStart + (offEnd - offStart) * easeInOut(t), 0));
+            }
+            buildDoubleTrack(pts, false, 0.02); 
+        }
+        buildCrossover(300, -2, 380, 2); buildCrossover(300, 2, 380, -2); 
+        buildCrossover(58820, -2, 58900, 2); buildCrossover(58820, 2, 58900, -2); 
+        buildCrossover(60500, -2, 60580, 2); buildCrossover(60500, 2, 60580, -2); 
+        buildCrossover(28850, -4.2, 28950, 0); buildCrossover(28850, 4.2, 28950, 0);
+        buildCrossover(29150, 0, 29250, -4.2); buildCrossover(29150, 0, 29250, 4.2);
+        function buildDepotBranch(dStart, offStart, dEnd, offEnd) {
+            let pts = []; let steps = Math.abs(dEnd - dStart) / 2;
+            for (let i = 0; i <= steps; i++) {
+                let t = i / steps; pts.push(getPtDetail(dStart + (dEnd - dStart) * t, offStart + (offEnd - offStart) * easeInOut(t), 0));
+            }
+            buildDoubleTrack(pts, true, 0); 
+        }
+        buildCrossover(600, -2, 680, 2); buildDepotBranch(700, 2, 1000, 8);  
+        buildDepotBranch(1500, -2, 1200, -8); buildCrossover(1550, -2, 1630, 2); 
+
+        function createBufferStop(d, offset, facingForward = true) {
+            let pDetail = getPtDetail(d, offset); let group = new THREE.Group();
+            let main = new THREE.Mesh(new THREE.BoxGeometry(2.8, 1.2, 1.0), new THREE.MeshLambertMaterial({ color: 0xcc0000 }));
+            let s1 = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.2, 1.1), new THREE.MeshLambertMaterial({ color: 0xffffff })); s1.position.y = 0.3;
+            let s2 = new THREE.Mesh(new THREE.BoxGeometry(2.9, 0.2, 1.1), new THREE.MeshLambertMaterial({ color: 0xffffff })); s2.position.y = -0.3;
+            group.add(main, s1, s2);
+            group.position.set(pDetail.x, pDetail.y + 0.6, pDetail.z); group.rotation.y = -pDetail.a + (facingForward ? 0 : Math.PI); 
+            scene.add(group);
+        }
+        [-2, 2, -9.2, 9.2].forEach(off => createBufferStop(-80, off, true)); 
+        [-2, 2].forEach(off => createBufferStop(59080, off, false));
+        [-2, 2].forEach(off => createBufferStop(63000, off, false)); 
+
+        // --- 6. 站點與設施 (含數位雙生特有的浮動文字) ---
+        const platMat = new THREE.MeshLambertMaterial({ color: 0x828282 }); 
+        const geoIsland = new THREE.BoxGeometry(5.2, 1.2, 160);
+        const geoSide = new THREE.BoxGeometry(4.2, 1.2, 160); 
+        const geoPassing = new THREE.BoxGeometry(4.2, 1.2, 160);
+        const poleMat = new THREE.MeshLambertMaterial({ color: 0xcccccc });
+        const stopCanvas = document.createElement('canvas'); stopCanvas.width = 128; stopCanvas.height = 128;
+        const sCtx = stopCanvas.getContext('2d'); sCtx.fillStyle = '#ffffff'; sCtx.fillRect(0,0,128,128);
+        sCtx.strokeStyle = '#ff0000'; sCtx.lineWidth = 12; sCtx.strokeRect(6,6,116,116);
+        sCtx.fillStyle = '#ff0000'; sCtx.font = 'bold 80px sans-serif'; sCtx.textAlign = 'center'; sCtx.textBaseline = 'middle'; sCtx.fillText("停", 64, 68);
+        const stopMat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(stopCanvas), transparent: true });
+
+        function createStopSign(d, trackOffset, isForwardDir) {
+            let signOffset = isForwardDir ? trackOffset - 1.3 : trackOffset + 1.3;
+            let p = getPtDetail(d, signOffset);
+            const group = new THREE.Group();
+            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.8), poleMat); pole.position.y = 0.9;
+            const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.6), stopMat); sign.position.y = 1.6;
+            sign.rotation.y = -p.a + (isForwardDir ? 0 : Math.PI);
+            group.add(pole, sign); group.position.set(p.x, p.y + 0.1, p.z);
+            scene.add(group);
+        }
+
+        STATIONS.forEach(st => {
+            let p = getPtDetail(st.dist, 0); const group = new THREE.Group();
+            group.position.set(p.x, p.y + 0.6, p.z); group.rotation.y = -p.a;
+
+            // 數位雙生特有：站名浮動看板 (因無駕駛介面)
+            const canvas = document.createElement('canvas'); canvas.width = 512; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(20, 20, 472, 88);
+            ctx.fillStyle = '#ffffff'; ctx.font = 'bold 44px "Microsoft JhengHei"'; ctx.textAlign = 'center'; 
+            ctx.fillText(st.name, 256, 78);
+            const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(canvas), transparent: true, depthTest: false, depthWrite: false }));
+            sprite.scale.set(80, 20, 1); sprite.position.y = 15; sprite.renderOrder = 999;
+            group.add(sprite);
+
+            let px = st.name.includes("FR12") ? 7.8 : 5.6;
+            if (st.type === "side" || st.type === "double_island" || st.type === "double_island_end") {
+                const p1 = new THREE.Mesh(geoSide, platMat); p1.position.x = -px;
+                const p2 = new THREE.Mesh(geoSide, platMat); p2.position.x = px;
+                group.add(p1, p2);
+            } else if (st.type === "island") { const p1 = new THREE.Mesh(geoIsland, platMat); p1.position.x = 0; group.add(p1); } 
+            else if (st.type === "passing_side") {
+                const p1 = new THREE.Mesh(geoPassing, platMat); p1.position.x = -9.6;
+                const p2 = new THREE.Mesh(geoPassing, platMat); p2.position.x = 9.6;
+                group.add(p1, p2);
+            }
+            scene.add(group);
+            let { L_in, R_in, L_out, R_out } = getBaseOffsets(st.dist);
+            [L_in, R_in, L_out, R_out].filter(o => o !== null).forEach(off => {
+                createStopSign(st.dist + 77, off, true); 
+                createStopSign(st.dist - 77, off, false); 
+            });
+            if (st.name.includes("FR21")) {
+                createStopSign(st.dist + 77, -9.2, true); createStopSign(st.dist + 77, 9.2, true);
+                createStopSign(st.dist - 77, -9.2, false); createStopSign(st.dist - 77, 9.2, false);
+            }
+        });
+
+        // --- 7. 攝影機路徑邏輯 (與 Game.html 物理邏輯同步) ---
+        function getTrainOffset(d, type, dir) {
+            if (d < 450) {
+                if (dir === 'down') {
+                    if (type === 'local') {
+                        if (d < 300) return -2; if (d > 380) return 2;  
+                        return -2 + 4 * easeInOut((d - 300) / 80);
+                    }
+                    if (type === 'express') return 2; 
+                } else {
+                    if (type === 'express') {
+                        if (d > 380) return -2; if (d < 300) return 2;
+                        return 2 - 4 * easeInOut((d - 300) / 80);
+                    }
+                    if (type === 'local') return -2; 
+                }
+            }
+            if (d >= 58750 && d <= 59400) {
+                if (dir === 'up' && type === 'express') return -2; 
+                if (dir === 'down' && type === 'express') {
+                    if (d < 58820) return 2; if (d > 58900) return -2;
+                    return 2 - 4 * easeInOut((d - 58820) / 80); 
+                }                     
+                let outerOff = 0;
+                if (d <= 58900) { let w = easeInOut((d - 58750)/150); outerOff = 2 + 7.2 * w; } 
+                else if (d <= 59080) { outerOff = 9.2; } 
+                else if (d <= 59330) { let w = easeInOut((d - 59080)/250); outerOff = 9.2 - 7.2 * w; } 
+                else { outerOff = 2; }
+                if (dir === 'down') return outerOff; else return -outerOff;
+            }
+            let { L_in, R_in, L_out, R_out } = getBaseOffsets(d);
+            if (dir === 'down') { if (type === 'local' && R_out !== null) return R_out; return R_in; } 
+            else { if (type === 'local' && L_out !== null) return L_out; return L_in; }
+        }
+
+        // --- 8. 互動與動畫控制 ---
+        let currentCamMode = 0; let isPlaying = true; let camD = 0;
+        const slider = document.getElementById('dist-slider');
+        const distVal = document.getElementById('dist-val');
+        const btnPlay = document.getElementById('btn-play');
+        const modeSelect = document.getElementById('cam-mode-select');
+
+        modeSelect.addEventListener('change', (e) => {
+            currentCamMode = parseInt(e.target.value);
+            if (currentCamMode === 1) camD = 0; // 下行普通
+            if (currentCamMode === 2) camD = 0; // 下行快速
+            if (currentCamMode === 3) camD = 63000; // 上行普通
+            if (currentCamMode === 4) camD = 59000; // 上行快速
+            slider.value = camD;
+            updateView(camD);
+        });
+
+        btnPlay.addEventListener('click', () => {
+            isPlaying = !isPlaying;
+            btnPlay.innerText = isPlaying ? "播放中" : "已暫停";
+            btnPlay.className = isPlaying ? "" : "paused";
+        });
+
+        slider.addEventListener('input', (e) => {
+            camD = Number(e.target.value); distVal.innerText = Math.floor(camD);
+            updateView(camD);
+        });
+
+        function updateView(d) {
+            if (currentCamMode === 0) {
+                // Free Cam
+                let p = getPtDetail(d, 0); 
+                // 只在第一次切換或滑桿移動時重置位置，平常讓 orbit controls 接管
+            } else {
+                let off = 0;
+                if (currentCamMode === 1) off = getTrainOffset(d, 'local', 'down');
+                if (currentCamMode === 2) off = getTrainOffset(d, 'express', 'down');
+                if (currentCamMode === 3) off = getTrainOffset(d, 'local', 'up');
+                if (currentCamMode === 4) off = getTrainOffset(d, 'express', 'up');
+
+                let p = getPtDetail(d, off);
+                camera.position.set(p.x, p.y + 2.1, p.z); 
+
+                let lookD = (currentCamMode === 1 || currentCamMode === 2) ? d + 20 : d - 20;
+                let lookOff = 0;
+                if (currentCamMode === 1) lookOff = getTrainOffset(lookD, 'local', 'down');
+                if (currentCamMode === 2) lookOff = getTrainOffset(lookD, 'express', 'down');
+                if (currentCamMode === 3) lookOff = getTrainOffset(lookD, 'local', 'up');
+                if (currentCamMode === 4) lookOff = getTrainOffset(lookD, 'express', 'up');
+
+                let pLook = getPtDetail(lookD, lookOff);
+                controls.target.set(pLook.x, pLook.y + 2.1, pLook.z);
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (isPlaying) {
+                let speed = 5; // 模擬速度
+                if (currentCamMode === 0) {
+                    // 自由模式下不自動移動，除非想做自動導覽
+                } else if (currentCamMode === 1 || currentCamMode === 2) {
+                    camD += speed; if (camD > 63000) camD = 63000;
+                } else if (currentCamMode === 3 || currentCamMode === 4) {
+                    camD -= speed; if (camD < -80) camD = -80;
+                }
+                
+                if(currentCamMode !== 0) {
+                    slider.value = camD; distVal.innerText = Math.floor(camD); updateView(camD);
+                }
+            }
+            controls.update(); 
+            renderer.render(scene, camera);
+        }
+        
+        // 初始設定
+        updateView(0);
+        let startP = getPtDetail(0, 0);
+        camera.position.set(startP.x, startP.y + 30, startP.z + 50);
+        controls.target.set(startP.x, startP.y, startP.z);
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
