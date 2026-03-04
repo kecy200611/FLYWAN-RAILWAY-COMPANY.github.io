@@ -353,27 +353,24 @@ function updateAudio() {
 
             // A. VVVF 變頻磁勵音 (起步專用，35km/h 後完全安靜)
             if (speedKph < 35) {
-                // 【修正】稍微提高起步的基準頻率與爬升率，聽起來更輕快
-                let vvvfFreq = 250 + speedKph * 12;
+                let vvvfFreq = 150 + speedKph * 8;
                 vvvfOsc.frequency.setTargetAtTime(vvvfFreq, audioCtx.currentTime, 0.1);
                 
+                // 15km/h 開始淡出，35km/h 完全消失
                 let vvvfFade = speedKph > 15 ? 1 - ((speedKph - 15) / 20) : 1;
-                vvvfGain.gain.setTargetAtTime(baseVol * 0.3 * vvvfFade, audioCtx.currentTime, 0.1);
+                vvvfGain.gain.setTargetAtTime(baseVol * 0.25 * vvvfFade, audioCtx.currentTime, 0.1);
             } else {
                 vvvfGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
             }
 
-            // B. 現代三相交流馬達運轉聲
-            // 【修正】降低基準頻率，避免與軌道聲衝突
-            let humFreq = 80 + speedKph * 4.0; 
+            // B. 現代三相交流馬達運轉聲 (修正版)
+            // 頻率：不再鎖死！讓頻率隨著速度一路線性上升，模擬馬達轉速不斷加快
+            let humFreq = 100 + speedKph * 4.0; 
             motorHumOsc.frequency.setTargetAtTime(humFreq, audioCtx.currentTime, 0.1);
             
-            // 【關鍵修正】新增起步漸入 (humStartFade)：0~20 km/h 時低頻聲呈線性漸入，消除剛起步的沉重轟鳴感
-            let humStartFade = speedKph < 20 ? (speedKph / 20) : 1.0;
+            // 音量：40km/h 開始衰減，到了 90km/h 時音量會降到 0 (完全被風切聲蓋過)
             let humFade = speedKph > 40 ? Math.max(0, 1 - ((speedKph - 40) / 50)) : 1.0;
-            
-            // 套用雙重漸變：起步漸大 -> 40km/h 後漸小
-            motorHumGain.gain.setTargetAtTime(baseVol * 0.6 * humFade * humStartFade, audioCtx.currentTime, 0.1);
+            motorHumGain.gain.setTargetAtTime(baseVol * 0.7 * humFade, audioCtx.currentTime, 0.1);
 
         } else {
             // 無動力/煞車時靜音 (惰行狀態只剩軌道聲)
@@ -384,9 +381,12 @@ function updateAudio() {
         // --- 2. 軌道滾動聲與風切聲 (保持不變) ---
         if (speedKph > 0.1) {
             let speedRatio = speedKph / 140; 
+            
+            // 高速時音量呈現「指數上升」，讓風切與軌道摩擦聲接管聽覺
             let rGain = Math.min(Math.pow(speedRatio, 1.2) * 0.8, 0.8); 
             rollGain.gain.setTargetAtTime(rGain, audioCtx.currentTime, 0.1);
             
+            // 濾波器：高速時放開高頻限制，產生 "沙沙" 的氣流聲
             let filterFreq = 150 + Math.min(speedKph, 120) * 8; 
             rollFilter.frequency.setTargetAtTime(filterFreq, audioCtx.currentTime, 0.1);
         } else {
@@ -975,7 +975,7 @@ function loop(now) {
     // --- 新增：警醒裝置計時邏輯 ---
     // 只有在非緊急狀況且車門關閉且速度大於 0 時才計算 (停車時通常不需要警醒)
     // 或者您希望停車時也要按，可以去掉 && state.v !== 0
-    if (!state.emer.triggered && !state.door && !state.doorClosing) {
+	if (!state.emer.triggered && !state.door && !state.doorClosing && state.v !== 0) {
         state.idleTime += dt;
 
         // 超過 60 秒觸發
