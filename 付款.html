@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>飛灣鐵路｜母親節套票付款</title>
+
+<link rel="stylesheet" href="style.css">
+
+<style>
+
+body{
+  background:#f5f8fc;
+}
+
+.payment-wrapper{
+  max-width:1100px;
+  margin:40px auto;
+
+  display:grid;
+  grid-template-columns:1fr 420px;
+  gap:32px;
+}
+
+.payment-card{
+  background:white;
+
+  border-radius:24px;
+
+  padding:32px;
+
+  border:1px solid #e5edf5;
+}
+
+.payment-title{
+  margin-top:0;
+
+  color:#123b72;
+
+  font-size:40px;
+}
+
+.payment-sub{
+  color:#5c7088;
+
+  line-height:1.8;
+
+  margin-bottom:30px;
+}
+
+.package-box{
+  display:flex;
+  gap:20px;
+
+  padding:20px;
+
+  border-radius:20px;
+
+  background:#f9fcff;
+
+  border:1px solid #e3edf5;
+
+  margin-bottom:30px;
+}
+
+.package-box img{
+  width:220px;
+  border-radius:18px;
+  object-fit:cover;
+}
+
+.package-info h2{
+  margin-top:0;
+  color:#1b4676;
+}
+
+.package-features{
+  margin:18px 0;
+  padding-left:20px;
+
+  line-height:2;
+}
+
+.coin-box{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+
+  padding:18px 24px;
+
+  border-radius:18px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #ff6ea8,
+      #ff4f8b
+    );
+
+  color:white;
+}
+
+.coin-box strong{
+  font-size:48px;
+}
+
+.coin-box span{
+  font-size:20px;
+}
+
+.form-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+}
+
+.form-group{
+  margin-bottom:20px;
+}
+
+.form-group.full{
+  grid-column:1 / -1;
+}
+
+label{
+  display:block;
+
+  margin-bottom:10px;
+
+  color:#294c72;
+
+  font-weight:700;
+}
+
+input,
+select{
+  width:100%;
+
+  padding:14px;
+
+  border-radius:14px;
+
+  border:1px solid #d7e2ee;
+
+  background:white;
+
+  font-size:15px;
+
+  box-sizing:border-box;
+}
+
+/* 優惠碼輸入框專屬樣式 */
+.promo-input-group {
+  display: flex;
+  gap: 10px;
+}
+
+.promo-btn {
+  padding: 0 24px;
+  border-radius: 14px;
+  border: none;
+  background: #123b72;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: .2s;
+  white-space: nowrap;
+}
+
+.promo-btn:hover {
+  background: #1b4676;
+}
+
+#promo-msg {
+  display: block;
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.pay-btn{
+  width:100%;
+
+  border:none;
+
+  margin-top:12px;
+
+  padding:18px;
+
+  border-radius:18px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #ff6ea8,
+      #ff4f8b
+    );
+
+  color:white;
+
+  font-size:18px;
+  font-weight:800;
+
+  cursor:pointer;
+
+  transition:.2s;
+}
+
+.pay-btn:hover{
+  transform:translateY(-2px);
+  opacity:.96;
+}
+
+.side-card{
+  background:white;
+
+  border-radius:24px;
+
+  padding:28px;
+
+  border:1px solid #e5edf5;
+
+  height:fit-content;
+}
+
+.side-card h2{
+  margin-top:0;
+  color:#123b72;
+}
+
+.summary-row{
+  display:flex;
+  justify-content:space-between;
+
+  padding:14px 0;
+
+  border-bottom:1px solid #eef3f8;
+}
+
+.summary-total{
+  margin-top:18px;
+
+  padding-top:18px;
+
+  border-top:2px solid #dce8f3;
+
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.summary-total strong{
+  font-size:36px;
+  color:#ff4f8b;
+}
+
+.notice-box{
+  margin-top:28px;
+
+  background:#fff8fb;
+
+  border:1px solid #ffd6e4;
+
+  border-radius:18px;
+
+  padding:18px;
+}
+
+.notice-box h3{
+  margin-top:0;
+  color:#d14e82;
+}
+
+.notice-box ul{
+  padding-left:18px;
+  line-height:1.8;
+}
+
+.secure-chip{
+  display:inline-block;
+
+  margin-top:20px;
+
+  padding:10px 16px;
+
+  border-radius:999px;
+
+  background:#edf8f1;
+  color:#27834b;
+
+  font-size:14px;
+  font-weight:700;
+}
+
+@media(max-width:960px){
+
+  .payment-wrapper{
+    grid-template-columns:1fr;
+  }
+
+  .package-box{
+    flex-direction:column;
+  }
+
+  .package-box img{
+    width:100%;
+  }
+
+  .form-grid{
+    grid-template-columns:1fr;
+  }
+
+  .payment-title{
+    font-size:32px;
+  }
+}
+
+/* 付款成功彈跳視窗樣式 */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0; 
+  left: 0; 
+  width: 100%; 
+  height: 100%;
+  background: rgba(18, 59, 114, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+.modal-content {
+  background: white;
+  padding: 40px;
+  border-radius: 24px;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  animation: popIn 0.3s ease-out;
+}
+
+.success-icon {
+  width: 80px; 
+  height: 80px;
+  background: #27834b; 
+  color: white;
+  font-size: 40px; 
+  line-height: 80px;
+  border-radius: 50%;
+  margin: 0 auto 20px;
+}
+
+.modal-content h2 { 
+  color: #123b72; 
+  margin-top: 0; 
+}
+
+.modal-content p { 
+  color: #5c7088; 
+  line-height: 1.6; 
+  margin-bottom: 24px; 
+}
+
+.back-btn {
+  background: linear-gradient(135deg, #ff6ea8, #ff4f8b);
+  color: white; 
+  border: none; 
+  padding: 16px;
+  border-radius: 14px; 
+  font-size: 16px; 
+  font-weight: 700;
+  cursor: pointer; 
+  width: 100%; 
+  transition: .2s;
+}
+
+.back-btn:hover { 
+  transform: translateY(-2px); 
+  opacity: .96; 
+}
+
+@keyframes popIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+</style>
+</head>
+
+<body>
+
+<header class="site-header">
+  <div class="container navbar">
+
+    <div class="brand">
+      <span class="brand-subtitle">
+        FLYWAN RAILWAY COMPANY
+      </span>
+
+      <span class="brand-title">
+        飛灣鐵路公司
+      </span>
+    </div>
+
+    <nav class="nav-links">
+      <a href="index.html">首頁</a>
+    </nav>
+
+  </div>
+</header>
+
+<main class="container">
+
+<div class="payment-wrapper">
+
+  <section class="payment-card">
+
+    <h1 class="payment-title">
+      母親節套票付款
+    </h1>
+
+    <p class="payment-sub">
+      感謝您選擇飛灣鐵路。<br>
+      完成付款後，
+      即可獲得母親節限定套票與專屬紀念禮品。
+    </p>
+
+    <div class="package-box">
+
+      <img
+        src="飛灣鐵路母親節套票.png"
+        alt="母親節套票"
+      >
+
+      <div class="package-info">
+
+        <h2>
+          2026 母親節限定套票
+        </h2>
+
+        <ul class="package-features">
+          <li>標準車廂來回票</li>
+          <li>母親節限定禮盒</li>
+          <li>紀念帆布袋</li>
+          <li>餐飲優惠券</li>
+        </ul>
+
+        <div class="coin-box">
+          <strong id="package-price">0.7</strong>
+          <span>飛灣幣</span>
+        </div>
+
+      </div>
+
+    </div>
+
+    <form>
+
+      <div class="form-grid">
+
+        <div class="form-group">
+          <label>姓名</label>
+
+          <input
+            type="text"
+            placeholder="請輸入姓名"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label>電子郵件</label>
+
+          <input
+            type="email"
+            placeholder="example@mail.com"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label>聯絡電話</label>
+
+          <input
+            type="tel"
+            placeholder="09xx-xxx-xxx"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label>付款方式</label>
+
+          <select>
+            <option>飛灣幣支付</option>
+            <option>信用卡</option>
+          </select>
+        </div>
+        
+        <div class="form-group full">
+          <label>優惠碼</label>
+          <div class="promo-input-group">
+            <input
+              type="text"
+              id="promo-input"
+              placeholder="請輸入優惠碼"
+            >
+            <button type="button" class="promo-btn" id="apply-promo">套用</button>
+          </div>
+          <span id="promo-msg"></span>
+        </div>
+
+        <div class="form-group full">
+          <label>備註</label>
+
+          <input
+            type="text"
+            placeholder="可填寫同行需求或特殊備註"
+          >
+        </div>
+
+      </div>
+
+      <button type="submit" class="pay-btn" id="submit-btn">
+        立即支付 0.7 飛灣幣 →
+      </button>
+
+    </form>
+
+    <span class="secure-chip">
+      🔒 飛灣安全付款系統 Secure Payment
+    </span>
+
+  </section>
+
+  <aside class="side-card">
+
+    <h2>訂單摘要</h2>
+
+    <div class="summary-row">
+      <span>母親節套票</span>
+      <span>0.5 飛灣幣</span>
+    </div>
+
+    <div class="summary-row">
+      <span>限定紀念禮品</span>
+      <span>0.1 飛灣幣</span>
+    </div>
+
+    <div class="summary-row">
+      <span>活動服務費</span>
+      <span>0.1 飛灣幣</span>
+    </div>
+
+    <div id="discount-row"></div>
+
+    <div class="summary-total">
+      <span>總計</span>
+
+      <strong id="total-price">0.7</strong>
+    </div>
+
+    <div class="notice-box">
+
+      <h3>付款注意事項</h3>
+
+      <ul>
+        <li>付款完成後將寄送電子票券。</li>
+        <li>活動票券限活動期間使用。</li>
+        <li>套票數量有限，售完為止。</li>
+        <li>飛灣幣付款後恕不退還。</li>
+      </ul>
+
+    </div>
+
+  </aside>
+
+</div>
+
+</main>
+
+<div id="success-modal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="success-icon">✓</div>
+    <h2>付款成功！</h2>
+    <p>感謝您的購買，電子票券與紀念禮品兌換碼已發送至您的電子信箱。</p>
+    <button class="back-btn" onclick="window.location.href='index.html'">返回首頁</button>
+  </div>
+</div>
+
+<footer class="site-footer">
+  <div class="container">
+    <p>
+      本網站及「飛灣鐵路公司」為虛構設定，
+      僅供娛樂與創作使用。
+    </p>
+  </div>
+</footer>
+
+<script>
+  let currentPrice = 0.7;
+  let isPromoApplied = false;
+
+  // 優惠碼邏輯
+  document.getElementById('apply-promo').addEventListener('click', function() {
+    const code = document.getElementById('promo-input').value.trim().toUpperCase();
+    const msg = document.getElementById('promo-msg');
+    const submitBtn = document.getElementById('submit-btn');
+    
+    if (code === '柯承佑董事長祝您母親節快樂' && !isPromoApplied) {
+      isPromoApplied = true;
+      currentPrice = 0;
+      
+      // 更新UI畫面數值
+      document.getElementById('package-price').innerText = '0';
+      document.getElementById('total-price').innerText = '0';
+      submitBtn.innerText = '立即免費領取 →';
+      
+      // 新增折扣顯示明細
+      document.getElementById('discount-row').innerHTML = `
+        <div class="summary-row" style="color:#ff4f8b; font-weight:bold;">
+          <span>優惠折扣</span>
+          <span>-0.7 飛灣幣</span>
+        </div>
+      `;
+      
+      msg.style.color = '#27834b';
+      msg.innerText = '優惠碼套用成功！';
+      
+    } else if (isPromoApplied) {
+      msg.style.color = '#5c7088';
+      msg.innerText = '已套用過優惠碼';
+    } else {
+      msg.style.color = '#d14e82';
+      msg.innerText = '無效的優惠碼';
+    }
+  });
+
+  // 表單送出邏輯
+  document.querySelector('form').addEventListener('submit', function(e) {
+    e.preventDefault(); 
+    const btn = document.getElementById('submit-btn');
+    const originalText = btn.innerText;
+    
+    btn.innerHTML = '處理中...';
+    btn.style.opacity = '0.7';
+    btn.style.pointerEvents = 'none';
+
+    setTimeout(() => {
+      // 寫入本機存儲 (與全域票務系統連動)
+      let currentTickets = JSON.parse(localStorage.getItem('flywan_tickets') || '[]');
+      currentTickets.push({
+        id: Date.now(),
+        type: '套票活動',
+        name: '2026 母親節限定套票',
+        price: currentPrice, // 改為動態價格變數
+        date: new Date().toLocaleString()
+      });
+      localStorage.setItem('flywan_tickets', JSON.stringify(currentTickets));
+
+      document.getElementById('success-modal').classList.add('active');
+      
+      btn.innerHTML = originalText;
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
+    }, 1500);
+  });
+</script>
+</body>
+</html>

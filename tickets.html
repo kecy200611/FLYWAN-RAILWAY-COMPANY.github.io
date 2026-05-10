@@ -22,10 +22,47 @@
       <a href="extras.html">其他資料</a>
       <a href="contact.html">聯絡我們</a>
     </nav>
-  </div>
 </header>
 
 <main class="container">
+<section id="personal-ticket-section">
+    <h2>個人票務中心</h2>
+    
+    <article class="card" id="login-card">
+      <h3>會員登入</h3>
+      <p style="margin-bottom: 16px;">請登入以購買單程票與管理您的車票。</p>
+      <div style="max-width: 300px;">
+        <input type="text" id="login-id" class="login-input" placeholder="請輸入身分證字號">
+        <button id="do-login-btn" class="sys-btn-primary" style="width: 100%;">登入系統</button>
+      </div>
+    </article>
+
+    <div id="user-dashboard" style="display: none;">
+      <div class="grid grid-2">
+        <article class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 id="welcome-msg" style="margin: 0; color: #123b72;">歡迎</h3>
+            <button id="do-logout-btn" class="refund-btn">登出</button>
+          </div>
+          
+          <h4 style="color: #1b4676; margin-bottom: 12px;">購買單程票</h4>
+          <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #294c72;">購買里程 (公里)：</label>
+          <input type="number" id="ticket-distance" class="login-input" min="1" value="10">
+          
+<p style="margin-bottom: 16px; color: #5c7088;">
+  試算票價：<strong id="ticket-price-calc" style="font-size: 24px;">0.2</strong> 飛灣幣
+</p>
+          <button id="do-buy-btn" class="sys-btn-primary" style="width: 100%;">確認購買</button>
+        </article>
+
+        <article class="card">
+          <h3 style="margin-top: 0; color: #123b72;">我的車票</h3>
+          <div id="ticket-list-container" style="max-height: 350px; overflow-y: auto; padding-right: 8px;">
+            </div>
+        </article>
+      </div>
+    </div>
+  </section>
   <section>
     <h1>票務資訊</h1>
     <p class="lead">
@@ -106,5 +143,146 @@
     <p>本網站及「飛灣鐵路公司」為虛構設定，僅供娛樂與創作使用。</p>
   </div>
 </footer>
+<script>
+  // 狀態與資料
+  let currentUser = JSON.parse(localStorage.getItem('flywan_user'));
+  let myTickets = JSON.parse(localStorage.getItem('flywan_tickets') || '[]');
+
+  // 畫面元素
+  const loginCard = document.getElementById('login-card');
+  const userDashboard = document.getElementById('user-dashboard');
+  const welcomeMsg = document.getElementById('welcome-msg');
+  const distanceInput = document.getElementById('ticket-distance');
+  const priceCalc = document.getElementById('ticket-price-calc');
+  const ticketListContainer = document.getElementById('ticket-list-container');
+
+  // 初始化畫面
+  function renderDashboard() {
+    if (currentUser) {
+      loginCard.style.display = 'none';
+      userDashboard.style.display = 'block';
+      welcomeMsg.textContent = '歡迎，' + currentUser.name;
+      renderTickets();
+    } else {
+      loginCard.style.display = 'block';
+      userDashboard.style.display = 'none';
+    }
+  }
+
+  // 登入
+  document.getElementById('do-login-btn').addEventListener('click', () => {
+    const idVal = document.getElementById('login-id').value.trim();
+    if (idVal) {
+      currentUser = { id: idVal, name: '旅客_' + idVal.slice(-4) };
+      localStorage.setItem('flywan_user', JSON.stringify(currentUser));
+      renderDashboard();
+    } else {
+      alert('請輸入身分證字號');
+    }
+  });
+
+  // 登出
+  document.getElementById('do-logout-btn').addEventListener('click', () => {
+    localStorage.removeItem('flywan_user');
+    currentUser = null;
+    document.getElementById('login-id').value = '';
+    renderDashboard();
+  });
+
+  // 里程試算
+  distanceInput.addEventListener('input', () => {
+    const dist = parseFloat(distanceInput.value) || 0;
+    const price = 0.1 + (dist * 0.01);
+    // 解決 JavaScript 浮點數精度問題，取小數點後兩位
+    priceCalc.textContent = parseFloat(price.toFixed(2));
+  });
+
+  // 購買車票
+  document.getElementById('do-buy-btn').addEventListener('click', () => {
+    const dist = parseFloat(distanceInput.value) || 0;
+    const price = parseFloat((0.1 + (dist * 0.01)).toFixed(2));
+    const newTicket = {
+      id: Date.now(),
+      type: '單程票',
+      name: `單程票 (${dist}公里)`,
+      price: price,
+      date: new Date().toLocaleString()
+    };
+    myTickets.unshift(newTicket); // 將新車票加到最前面
+    localStorage.setItem('flywan_tickets', JSON.stringify(myTickets));
+    renderTickets();
+    alert('購票成功！');
+  });
+
+  // 渲染車票與退票功能
+  function renderTickets() {
+    ticketListContainer.innerHTML = '';
+    if (myTickets.length === 0) {
+      ticketListContainer.innerHTML = '<p style="color:#5c7088;">目前沒有車票記錄。</p>';
+      return;
+    }
+    myTickets.forEach(ticket => {
+      const div = document.createElement('div');
+      div.className = 'ticket-item';
+      div.innerHTML = `
+        <div>
+          <strong>${ticket.name}</strong>
+          <span>類型：${ticket.type} <br>金額：${ticket.price} 飛灣幣<br>時間：${ticket.date}</span>
+        </div>
+        <button class="refund-btn" onclick="doRefund(${ticket.id})">退票</button>
+      `;
+      ticketListContainer.appendChild(div);
+    });
+  }
+
+  window.doRefund = function(id) {
+    if(confirm('確定要退還此車票嗎？')) {
+      myTickets = myTickets.filter(t => t.id !== id);
+      localStorage.setItem('flywan_tickets', JSON.stringify(myTickets));
+      renderTickets();
+    }
+  };
+
+// 動態切換主題色
+  function updateTheme() {
+    const section = document.getElementById('personal-ticket-section');
+    // 檢查車票庫中是否包含「母親節」字樣的車票
+    const hasMothersDay = myTickets.some(ticket => ticket.name.includes('母親節'));
+    
+    if (hasMothersDay) {
+      section.classList.add('theme-pink');
+    } else {
+      section.classList.remove('theme-pink');
+    }
+  }
+
+  // 渲染車票與退票功能 (修改這段)
+  function renderTickets() {
+    ticketListContainer.innerHTML = '';
+    
+    // 每次重新渲染車票時，同步更新主題色
+    updateTheme();
+
+    if (myTickets.length === 0) {
+      ticketListContainer.innerHTML = '<p style="color:#5c7088;">目前沒有車票記錄。</p>';
+      return;
+    }
+    myTickets.forEach(ticket => {
+      const div = document.createElement('div');
+      div.className = 'ticket-item';
+      div.innerHTML = `
+        <div>
+          <strong>${ticket.name}</strong>
+          <span>類型：${ticket.type} <br>金額：${ticket.price} 飛灣幣<br>時間：${ticket.date}</span>
+        </div>
+        <button class="refund-btn" onclick="doRefund(${ticket.id})">退票</button>
+      `;
+      ticketListContainer.appendChild(div);
+    });
+  }
+
+  // 執行初始化
+  renderDashboard();
+</script>
 </body>
 </html>

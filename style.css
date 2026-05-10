@@ -440,3 +440,233 @@ ul.clean li::before {
     color: #555;
     font-size: 0.9rem;
 }
+
+/* =========================
+   母親節活動模組
+========================= */
+
+.campaign-banner{
+  margin: 40px 0;
+  padding: 32px;
+  border-radius: 24px;
+
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 32px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #fff7fb 0%,
+      #f7fbff 100%
+    );
+
+  border: 1px solid #e6eef7;
+  align-items: center;
+}
+
+.campaign-tag{
+  display: inline-block;
+
+  padding: 6px 14px;
+  border-radius: 999px;
+
+  background: #ffeff5;
+  color: #d65a8a;
+
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.campaign-title{
+  margin: 0 0 16px;
+  font-size: 38px;
+  line-height: 1.2;
+  color: #123b72;
+}
+
+.campaign-desc{
+  font-size: 17px;
+  line-height: 1.8;
+  color: #425466;
+  margin-bottom: 24px;
+}
+
+.campaign-highlights{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  margin-bottom: 28px;
+}
+
+.campaign-highlights span{
+  background: white;
+  border: 1px solid #dde7f1;
+
+  padding: 10px 14px;
+  border-radius: 12px;
+
+  font-size: 14px;
+  color: #264b6f;
+}
+
+.campaign-price-box{
+  background:
+    linear-gradient(
+      135deg,
+      #ff7bac,
+      #ff5c91
+    );
+
+  color: white;
+
+  padding: 20px;
+  border-radius: 18px;
+
+  width: fit-content;
+  margin-bottom: 24px;
+}
+
+.campaign-price-label{
+  font-size: 14px;
+  opacity: .9;
+}
+
+.campaign-price{
+  font-size: 52px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.campaign-price span{
+  font-size: 20px;
+  margin-left: 4px;
+}
+
+.campaign-actions{
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.campaign-image{
+  width: 100%;
+  border-radius: 22px;
+
+  box-shadow:
+    0 10px 30px rgba(0,0,0,.08);
+}
+
+/* 響應式 */
+
+@media (max-width: 900px){
+
+  .campaign-banner{
+    grid-template-columns: 1fr;
+  }
+
+  .campaign-title{
+    font-size: 30px;
+  }
+
+  .campaign-price{
+    font-size: 42px;
+  }
+}
+
+/* 票務中心專用按鈕與車票樣式 */
+.sys-btn-primary { 
+  background: linear-gradient(135deg, #ff6ea8, #ff4f8b); 
+  color: white; 
+  transition: .2s;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.sys-btn-primary:hover {
+  transform: translateY(-2px);
+  opacity: .96;
+}
+.refund-btn { 
+  background: #fff8fb; 
+  color: #d14e82; 
+  border: 1px solid #ffd6e4; 
+  padding: 8px 14px; 
+  border-radius: 12px; 
+  cursor: pointer; 
+  font-weight: bold;
+  transition: .2s;
+}
+.refund-btn:hover {
+  background: #ff4f8b;
+  color: white;
+}
+.ticket-item { 
+  background: #f9fcff; 
+  border: 1px solid #d7e2ee; 
+  padding: 16px; 
+  border-radius: 14px; 
+  margin-bottom: 12px; 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+}
+.ticket-item strong { color: #1b4676; display: block; margin-bottom: 6px; font-size: 18px;}
+.ticket-item span { color: #5c7088; font-size: 14px; line-height: 1.5; display: block;}
+.login-input {
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid #d7e2ee;
+  box-sizing: border-box;
+  margin-bottom: 16px;
+}
+
+/* 預設公司色 (深藍) */
+#ticket-price-calc { color: #123b72; }
+
+.sys-btn-primary { 
+  background: linear-gradient(135deg, #123b72, #1b4676); 
+  color: white; 
+  transition: .2s;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.sys-btn-primary:hover { transform: translateY(-2px); opacity: .96; }
+
+.refund-btn { 
+  background: #f5f8fc; 
+  color: #123b72; 
+  border: 1px solid #d7e2ee; 
+  padding: 8px 14px; 
+  border-radius: 12px; 
+  cursor: pointer; 
+  font-weight: bold;
+  transition: .2s;
+}
+.refund-btn:hover { background: #123b72; color: white; }
+
+/* === 偵測到母親節套票時的粉色主題 === */
+.theme-pink #ticket-price-calc { color: #ff4f8b; }
+
+.theme-pink .sys-btn-primary {
+  background: linear-gradient(135deg, #ff6ea8, #ff4f8b);
+}
+.theme-pink .refund-btn {
+  background: #fff8fb;
+  color: #d14e82;
+  border-color: #ffd6e4;
+}
+.theme-pink .refund-btn:hover {
+  background: #ff4f8b;
+  color: white;
+}
