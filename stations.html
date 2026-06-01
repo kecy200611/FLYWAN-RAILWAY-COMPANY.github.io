@@ -109,6 +109,139 @@
       .station-dropdown { width: 100%; }
       .fr-standard-table th, .fr-standard-table td { display: block; width: 100%; }
     }
+
+    /* 2D 平面圖畫布核心樣式 */
+    .blueprint-frame {
+      border: 2px solid #e0e0e0;
+      border-radius: 6px;
+      background-color: #05070a;
+      padding: 15px;
+      margin-top: 15px;
+    }
+    .blueprint-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+      background-color: #1a202c;
+      padding: 10px 15px;
+      border-radius: 4px;
+    }
+    .level-selector { display: flex; gap: 8px; }
+    .level-btn {
+      background-color: #2d3748;
+      border: 1px solid #4a5568;
+      color: #f1f5f9;
+      padding: 6px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .level-btn.active { background-color: #10b981; border-color: #10b981; color: white; font-weight: bold; }
+
+    .canvas-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: auto;
+      padding: 10px;
+    }
+    .blueprint-canvas {
+      width: 900px;
+      height: 540px;
+      background-color: #0b1f3d;
+      border: 3px solid #ffffff;
+      position: relative;
+      background-size: 20px 20px;
+      background-image: 
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+    }
+
+    .zone-outline {
+      position: absolute;
+      border: 2px dashed transparent;
+      pointer-events: none;
+      padding: 8px;
+      font-size: 11px;
+      font-weight: bold;
+    }
+    .outline-free { border-color: #3b82f6; background-color: rgba(59, 130, 246, 0.04); color: #93c5fd; }
+    .outline-paid { border-color: #ef4444; background-color: rgba(239, 68, 68, 0.05); color: #fca5a5; }
+
+    .rail-track {
+      position: absolute;
+      height: 12px;
+      background: repeating-linear-gradient(90deg, #121924, #121924 8px, #ffffff 8px, #ffffff 11px);
+      border-top: 1px solid #ffffff;
+      border-bottom: 1px solid #ffffff;
+      width: 100%;
+      z-index: 2;
+    }
+    .rail-passing { opacity: 0.35; border-top: 1px dashed #ffffff; border-bottom: 1px dashed #ffffff; }
+
+    .platform-slab {
+      position: absolute;
+      background-color: #414f63;
+      border: 2px solid #ffffff;
+      color: #ffffff;
+      font-weight: bold;
+      font-size: 11px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 3;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.6);
+    }
+
+    .facility-node {
+      position: absolute;
+      background-color: #ffffff;
+      color: #000000;
+      border: 1px solid #000000;
+      font-size: 10px;
+      font-weight: bold;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+      z-index: 10;
+    }
+    .icon-1 { background-color: #fef08a; }
+    .icon-2 { background-color: #86efac; }
+    .icon-3 { background-color: #93c5fd; }
+    .icon-4 { background-color: #c084fc; }
+    .icon-5 { background-color: #f472b6; }
+    .icon-6 { background-color: #ef4444; color: white; border-width: 2px; }
+    .icon-7 { background-color: #3b82f6; color: white; }
+    .icon-8 { background-color: #fb923c; color: white; border-radius: 50%; border: 2px dashed #000; text-align: center; font-size: 9px; line-height: 1.1; }
+
+    .station-exit-sign {
+      position: absolute;
+      background-color: #10b981;
+      color: white;
+      border: 1px solid #ffffff;
+      font-size: 10px;
+      font-weight: bold;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 3px;
+      z-index: 5;
+    }
+
+    .legend-row {
+      display: flex;
+      gap: 15px;
+      margin-top: 15px;
+      font-size: 0.85rem;
+      flex-wrap: wrap;
+      background-color: #1a202c;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; color: #ffffff; }
+    .legend-block { width: 14px; height: 14px; border: 1px solid #000; font-size: 9px; font-weight: bold; text-align: center; line-height: 14px; border-radius: 2px; }
   </style>
 </head>
 <body>
@@ -135,7 +268,7 @@
   <section>
     <h1>車站與路線資訊</h1>
     <p class="lead">
-      飛灣鐵路目前營運與規劃中路線包含：飛灣線、飛灣環狀線與紅楓線。<br>
+      飛灣鐵路目前營運鐵路路線:飛灣快線。<br>
       本頁提供各路線概要與標準化車站詳細服務查詢。
     </p>
   </section>
@@ -201,53 +334,79 @@
 </main>
 
 <script>
-  /* 飛灣鐵路全線車站資料庫 (FR01-FR22) */
   const frStations = {
-    "FR01": { name: "飛灣工業區", f: ["1F 大廳層", "1F 中央詢問處", "詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "無"], exits: [{id:"1", acc:true, type:"電梯/樓梯", loc:"工業路一段"}], trans: "地鐵東西線、環狀線；公車 101, 102 路線；共享自行車 FlyBike" },
-    "FR02": { name: "飛灣港", f: ["B1 大廳層", "B1 詢問處", "大廳層兩側", "B1 非付費區", "有", "有", "有", "開放進出", "開放進出", "20組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"港口貨運大樓"}], trans: "地鐵環狀線；公車 201 路線；共享自行車 FlyBike" },
-    "FR03": { name: "物流中心", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "無", "有", "不開放", "開放進出", "40組"], exits: [{id:"1", acc:true, type:"電梯/樓梯", loc:"貨運一街"}], trans: "地鐵環狀線；共享自行車 FlyBike" },
-    "FR04": { name: "飛灣郵輪港", baggage: "本站於營運時間內全時段提供「機場快速行李托運服務」", f: ["1F及B1層", "1F 詢問處", "各層大廳", "1F及B1 非付費區", "有", "有", "有", "假日開放", "開放進出", "60組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"郵輪碼頭連通道"}, {id:"2", acc:true, type:"電梯", loc:"轉運站"}], trans: "地鐵中央線、環狀線；WRT 快艇；公車 303；共享自行車 FlyBike" },
-    "FR05": { name: "濱江商務區", f: ["B1 穿堂層", "B1 詢問處", "穿堂層兩側", "B1 非付費區", "有", "有", "有", "不開放", "開放進出", "80組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"濱江大道"}], trans: "地鐵環狀線；共享自行車 FlyBike" },
-    "FR06": { name: "市民廣場", f: ["B1 穿堂層", "B1 詢問處", "穿堂層兩側", "B1 非付費區", "有", "有", "有", "開放進出", "開放進出", "50組"], exits: [{id:"1", acc:true, type:"電梯/樓梯", loc:"市政府旁"}], trans: "地鐵環狀線；共享自行車 FlyBike" },
-    "FR07": { name: "文化中心", f: ["B1 穿堂層", "B1 詢問處", "穿堂層兩側", "B1 非付費區", "有", "有", "有", "開放進出", "開放進出", "30組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"圖書館側"}], trans: "地鐵環狀線；共享自行車 FlyBike" },
-    "FR08": { name: "飛灣新站", baggage: "本站於營運時間內全時段提供「機場快速行李托運服務」", f: ["B1至B2層", "B1 穿堂層中央", "B1 詢問處旁", "B1/B2 非付費區", "有", "有", "有", "不開放", "開放進出", "120組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"新站廣場"}, {id:"2", acc:true, type:"電梯", loc:"商場B1層"}], trans: "地鐵南北線；共享自行車 FlyBike；地下停車場" },
-    "FR09": { name: "科創園", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "40組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"科技大道"}], trans: "共享自行車 FlyBike" },
-    "FR10": { name: "飛灣學區", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "20組"], exits: [{id:"1", acc:true, type:"電梯/樓梯", loc:"大學路"}], trans: "共享自行車 FlyBike" },
-    "FR11": { name: "飛灣大道", f: ["B1 穿堂層", "B1 詢問處", "穿堂層兩側", "B1 非付費區", "有", "有", "有", "開放進出", "開放進出", "30組"], exits: [{id:"1", acc:true, type:"電梯/樓梯", loc:"大道交叉口"}], trans: "共享自行車 FlyBike" },
-    "FR12": { name: "飛灣公園", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "50組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"公園入口"}], trans: "地鐵公園線；共享自行車 FlyBike" },
-    "FR13": { name: "錦湖", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "20組"], exits: [{id:"1", acc:true, type:"電梯/樓梯", loc:"錦湖路"}], trans: "共享自行車 FlyBike" },
-    "FR14": { name: "鷺島", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "20組"], exits: [{id:"1", acc:true, type:"電梯/樓梯", loc:"鷺島步道"}], trans: "共享自行車 FlyBike" },
-    "FR15": { name: "空港新城", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "60組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"新城大道"}], trans: "機場園區巴士；共享自行車 FlyBike" },
-    "FR16": { name: "飛灣機場", f: ["穿堂層及月台", "穿堂層服務區", "候機大廳旁", "穿堂層及航廈", "有", "有", "有", "開放進出", "開放進出", "150組"], exits: [{id:"1", acc:true, type:"電梯", loc:"第一航廈"}, {id:"2", acc:true, type:"電梯", loc:"第二航廈"}], trans: "國際/國內航班、機場航廈線" },
-    "FR17": { name: "翡翠新城", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "40組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"翡翠路"}], trans: "社區巴士；共享自行車 FlyBike" },
-    "FR18": { name: "紫荊苑", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "20組"], exits: [{id:"1", acc:true, type:"電梯/樓梯", loc:"紫荊街"}], trans: "社區巴士；共享自行車 FlyBike" },
-    "FR19": { name: "御景新村", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "20組"], exits: [{id:"1", acc:true, type:"電梯/樓梯", loc:"御景路"}], trans: "社區巴士；共享自行車 FlyBike" },
-    "FR20": { name: "自然保育中心", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "30組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"保育中心門口"}], trans: "紅楓觀光巴士" },
-    "FR21": { name: "綾路北站", f: ["地面層及轉乘層", "地面層詢問處", "詢問處旁", "地面層", "有", "有", "有", "開放進出", "開放進出", "40組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"紅楓路入口"}, {id:"2", acc:true, type:"電梯/樓梯", loc:"ART 接駁區"}], trans: "ART 綾京線；社區巴士" },
-    "FR22": { name: "全京大道", f: ["B1 穿堂層", "B1 詢問處", "穿堂層兩側", "B1 非付費區", "有", "有", "有", "開放進出", "開放進出", "30組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"全京路"}], trans: "ART 綾京線；共享自行車 FlyBike" }
+    "FR01": { name: "飛灣工業區", f: ["1F 大廳層", "1F 中央詢問處", "詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "無"], exits: [{id:"1", acc:true, type:"電梯/樓梯", loc:"工業路一段"}], trans: "地鐵東西線、環狀線；公車 101, 102 路線；共享自行車 FlyBike", plat_config: "2-island-4-track", type_text: "二島四線 (高架車站)", group: "elevated", is_surface: false },
+    "FR02": { name: "飛灣港", f: ["B1 大廳層", "B1 詢問處", "大廳層兩側", "B1 非付費區", "有", "開", "有", "開放進出", "開放進出", "20組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"港口貨運大樓"}], trans: "地鐵環狀線；公車 201 路線；共享自行車 FlyBike", plat_config: "side-platform", type_text: "側式月台 (高架車站)", group: "elevated", is_surface: false },
+    "FR03": { name: "物流中心", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "無", "有", "不開放", "開放進出", "40組"], exits: [{id:"1", acc:true, type:"電梯/樓梯", loc:"貨運一街"}], trans: "地鐵環狀線；共享自行車 FlyBike", plat_config: "island-platform", type_text: "一島式月台 (高架車站)", group: "elevated", is_surface: false },
+    "FR04": { name: "飛灣郵輪港", baggage: "本站於營運時間內全時段提供「機場快速行李托運服務」", f: ["1F及B1層", "1F 詢問處", "各層大廳", "1F及B1 非付費區", "有", "有", "有", "假日開放", "開放進出", "60組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"郵輪碼頭連通道"}, {id:"2", acc:true, type:"電梯", loc:"轉運站"}], trans: "地鐵中央線、環狀線；WRT 快艇；公車 303；共享自行車 FlyBike", plat_config: "2-island-4-track", type_text: "二島四線 (地下車站)", group: "underground", is_surface: false },
+    "FR05": { name: "濱江商務區", f: ["B1 穿堂層", "B1 詢問處", "穿堂層兩側", "B1 非付費區", "有", "有", "有", "不開放", "開放進出", "80組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"濱江大道"}], trans: "地鐵環狀線；共享自行車 FlyBike", plat_config: "island-platform", type_text: "一島式月台 (地下車站)", group: "underground", is_surface: false },
+    "FR06": { name: "市民廣場", f: ["B1 穿堂層", "B1 詢問處", "穿堂層兩側", "B1 非付費區", "有", "有", "有", "開放進出", "開放進出", "50組"], exits: [{id:"1", acc:true, type:"電梯/樓梯", loc:"市政府旁"}], trans: "地鐵環狀線；共享自行車 FlyBike", plat_config: "2-side-4-track-passing", type_text: "二側四線包含兩中央通過線 (地下車站)", group: "underground", is_surface: false },
+    "FR07": { name: "文化中心", f: ["B1 穿堂層", "B1 詢問處", "穿堂層兩側", "B1 非付費區", "有", "有", "有", "開放進出", "開放進出", "30組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"圖書館側"}], trans: "地鐵環狀線；共享自行車 FlyBike", plat_config: "island-platform", type_text: "一島式月台 (地下車站)", group: "underground", is_surface: false },
+    "FR08": { name: "飛灣新站", baggage: "本站於營運時間內全時段提供「機場快速行李托運服務」", f: ["B1至B2層", "B1 穿堂層中央", "B1 詢問處旁", "B1/B2 非付費區", "有", "有", "有", "不開放", "開放進出", "120組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"新站廣場"}, {id:"2", acc:true, type:"電梯", loc:"商場B1層"}], trans: "地鐵南北線；共享自行車 FlyBike；地下停車場", plat_config: "2-island-4-track", type_text: "二島四線 (地下車站)", group: "underground", is_surface: false },
+    "FR09": { name: "科創園", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "40組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"科技大道"}], trans: "共享自行車 FlyBike", plat_config: "2-side-4-track-passing", type_text: "二側四線包含兩中央通過線 (地下車站)", group: "underground", is_surface: false },
+    "FR10": { name: "飛灣學區", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "20組"], exits: [{id:"1", acc:true, type:"電梯/樓梯", loc:"大學路"}], trans: "共享自行車 FlyBike", plat_config: "side-platform", type_text: "側式月台 (地下車站)", group: "underground", is_surface: false },
+    "FR11": { name: "飛灣大道", f: ["B1 穿堂層", "B1 詢問處", "穿堂層兩側", "B1 非付費區", "有", "有", "有", "開放進出", "開放進出", "30組"], exits: [{id:"1", acc:true, type:"電梯/樓梯", loc:"大道交叉口"}], trans: "共享自行車 FlyBike", plat_config: "island-platform", type_text: "一島式月台 (地下車站)", group: "underground", is_surface: false },
+    "FR12": { name: "飛灣公園", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "50組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"公園入口"}], trans: "地鐵公園線；共享自行車 FlyBike", plat_config: "2-island-4-track", type_text: "二島四線 (地面跨線天橋車站)", group: "surface", is_surface: true },
+    "FR13": { name: "錦湖", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "20組"], exits: [{id:"1", acc:true, type:"電梯/樓梯", loc:"錦湖路"}], trans: "共享自行車 FlyBike", plat_config: "side-platform", type_text: "側式月台 (地面跨線天橋車站)", group: "surface", is_surface: true },
+    "FR14": { name: "鷺島", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "20組"], exits: [{id:"1", acc:true, type:"電梯/樓梯", loc:"鷺島步道"}], trans: "共享自行車 FlyBike", plat_config: "side-platform", type_text: "側式月台 (地面跨線天橋車站)", group: "surface", is_surface: true },
+    "FR15": { name: "空港新城", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "60組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"新城大道"}], trans: "機場園區巴士；共享自行車 FlyBike", plat_config: "island-platform", type_text: "一島式月台 (地下車站)", group: "underground", is_surface: false },
+    "FR16": { name: "飛灣機場", f: ["穿堂層及月台", "穿堂層服務區", "候機大廳旁", "穿堂層及航廈", "有", "有", "有", "開放進出", "開放進出", "150組"], exits: [{id:"1", acc:true, type:"電梯", loc:"第一航廈"}, {id:"2", acc:true, type:"電梯", loc:"第二航廈"}], trans: "國際/國內航班、機場航廈線", plat_config: "2-island-4-track", type_text: "二島四線 (地下車站)", group: "underground", is_surface: false },
+    "FR17": { name: "翡翠花園", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "40組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"翡翠路"}], trans: "社區巴士；共享自行車 FlyBike", plat_config: "side-platform", type_text: "側式月台 (地面跨線天橋車站)", group: "surface", is_surface: true },
+    "FR18": { name: "紫荊苑", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "20組"], exits: [{id:"1", acc:true, type:"電梯/樓梯", loc:"紫荊街"}], trans: "社區巴士；共享自行車 FlyBike", plat_config: "2-side-4-track-passing", type_text: "二側四線包含兩中央通過線 (高架車站)", group: "elevated", is_surface: false },
+    "FR19": { name: "御景新村", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "20組"], exits: [{id:"1", acc:true, type:"電梯/樓梯", loc:"御景路"}], trans: "社區巴士；共享自行車 FlyBike", plat_config: "island-platform", type_text: "一島式月台 (高架車站)", group: "elevated", is_surface: false },
+    "FR20": { name: "自然保育中心", f: ["1F 大廳層", "1F 詢問處", "1F 詢問處旁", "1F 非付費區", "有", "有", "有", "開放進出", "開放進出", "30組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"保育中心門口"}], trans: "紅楓觀光巴士", plat_config: "side-platform", type_text: "側式月台 (高架車站)", group: "elevated", is_surface: false },
+    "FR21": { name: "綾路北站", f: ["地面層及轉乘層", "地面層詢問處", "詢問處旁", "地面層", "有", "有", "有", "開放進出", "開放進出", "40組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"紅楓路入口"}, {id:"2", acc:true, type:"電梯/樓梯", loc:"ART 接駁區"}], trans: "ART 綾京線；社區巴士", plat_config: "2-island-4-track-turnback", type_text: "二島四線 (外側正線 / 中央折返線) (高架車站)", group: "elevated", is_surface: false },
+    "FR22": { name: "全京大道", f: ["B1 穿堂層", "B1 詢問處", "穿堂層兩側", "B1 非付費區", "有", "有", "有", "開放進出", "開放進出", "30組"], exits: [{id:"1", acc:true, type:"電梯/電扶梯", loc:"全京路"}], trans: "ART 綾京線；共享自行車 FlyBike", plat_config: "island-platform", type_text: "一島式月台 (高架車站)", group: "elevated", is_surface: false }
+  };
+
+  let currentLvl = "大廳層";
+  let currentStationId = "FR01";
+
+  const transitDevices = {
+    top: [
+      { id: 2, className: "icon-2", x: 440, y: 95, w: 45, h: 35, text: "2" },
+      { id: 1, className: "icon-1", x: 530, y: 95, w: 60, h: 35, text: "1" },
+      { id: 3, className: "icon-3", x: 620, y: 95, w: 60, h: 35, text: "3" }
+    ],
+    bottom: [
+      { id: 2, className: "icon-2", x: 440, y: 395, w: 45, h: 35, text: "2" },
+      { id: 1, className: "icon-1", x: 530, y: 395, w: 60, h: 35, text: "1" },
+      { id: 3, className: "icon-3", x: 620, y: 395, w: 60, h: 35, text: "3" }
+    ],
+    center: [
+      { id: 2, className: "icon-2", x: 460, y: 245, w: 45, h: 35, text: "2" },
+      { id: 1, className: "icon-1", x: 550, y: 245, w: 60, h: 35, text: "1" },
+      { id: 3, className: "icon-3", x: 650, y: 245, w: 60, h: 35, text: "3" }
+    ]
   };
 
   function loadStationData(id) {
+    currentStationId = id;
     const s = frStations[id];
     if (!s) return;
 
+    if (s.group === "elevated") currentLvl = "地面層";
+    else if (s.group === "underground") currentLvl = "大廳層(B1)";
+    else currentLvl = "大廳層";
+
+    renderPage();
+  }
+
+  function renderPage() {
+    const s = frStations[currentStationId];
+    const container = document.getElementById("stationDetail");
+    
     let html = `
       <div class="st-main-header">
-        <div class="st-code-box">${id}</div>
+        <div class="st-code-box">${currentStationId}</div>
         <h2 class="st-name-display">${s.name}</h2>
       </div>
+      
       ${s.baggage ? `<div class="airport-checkin-info">📦 其他服務：${s.baggage}</div>` : ''}
 
       <div class="table-category-title">車站設施設備</div>
       <table class="fr-standard-table">
         <tr><th>車站名稱</th><td>${s.name}</td></tr>
-        <tr><th>無障礙電梯位置</th><td>${s.f[0]}</td></tr>
-        <tr><th>詢問處位置</th><td>${s.f[1]}</td></tr>
-        <tr><th>飲水機位置</th><td>${s.f[2]}</td></tr>
-        <tr><th>廁所位置</th><td>${s.f[3]}</td></tr>
-        <tr><th>親子無障礙廁所位置</th><td>${s.f[4]}</td></tr>
-        <tr><th>哺集乳室位置</th><td>${s.f[5]}</td></tr>
-        <tr><th>嬰兒尿布臺位置</th><td>${s.f[6]}</td></tr>
         <tr><th>自行車進出</th><td>${s.f[7]}</td></tr>
         <tr><th>大型寵物車進出</th><td>${s.f[8]}</td></tr>
         <tr><th>置物櫃資訊</th><td>${s.f[9]}</td></tr>
@@ -270,12 +429,220 @@
       <table class="fr-standard-table">
         <tr><th>公車/共享/停車資訊</th><td>${s.trans}</td></tr>
       </table>
+
+      <div class="table-category-title">🗺️ 車站平面配置圖</div>
+      <div class="blueprint-frame">
+        <div class="blueprint-toolbar">
+          <div style="font-size:0.9rem; font-weight:bold; color:#00bcd4;">動態結構配置：${s.type_text}</div>
+          <div class="level-selector" id="levelSelector"></div>
+        </div>
+        <div class="canvas-container">
+          <div class="blueprint-canvas" id="canvas"></div>
+        </div>
+        
+        <div class="legend-row">
+          <div class="legend-item"><div class="legend-block icon-1">1</div><span>電扶梯</span></div>
+          <div class="legend-item"><div class="legend-block icon-2">2</div><span>無障礙電梯</span></div>
+          <div class="legend-item"><div class="legend-block icon-3">3</div><span>樓梯</span></div>
+          <div class="legend-item"><div class="legend-block icon-4">4</div><span>公共電話</span></div>
+          <div class="legend-item"><div class="legend-block icon-5">5</div><span>廁所隔間</span></div>
+          <div class="legend-item"><div class="legend-block icon-6">6</div><span>驗票閘門</span></div>
+          <div class="legend-item"><div class="legend-block icon-7">7</div><span>自動售票機</span></div>
+          <div class="legend-item"><div class="legend-block icon-8" style="border-radius:50%">8</div><span>跨界雙向服務台</span></div>
+          <div class="legend-item"><div style="width:16px;height:10px;background:#10b981;border:1px solid #fff"></div><span>外部出口</span></div>
+        </div>
+      </div>
     `;
-    document.getElementById('stationDetail').innerHTML = html;
+
+    container.innerHTML = html;
+    renderLevelsMenu(s);
+    renderCanvas(s);
   }
 
-  // 初始化載入第一站
-  loadStationData("FR01");
+  function renderLevelsMenu(s) {
+    const selector = document.getElementById("levelSelector");
+    selector.innerHTML = "";
+    let levels = [];
+    
+    if (s.group === "elevated") levels = ["地面層", "大廳層(2F)", "月台層(3F)"];
+    else if (s.group === "underground") levels = ["大廳層(B1)", "月台層(B2)"];
+    else levels = ["地面層", "大廳層(跨線天橋)"];
+
+    if (!levels.includes(currentLvl)) currentLvl = levels[levels.length - 1];
+
+    levels.forEach(lvl => {
+      const btn = document.createElement("button");
+      btn.className = `level-btn ${lvl === currentLvl ? 'active' : ''}`;
+      btn.innerText = lvl;
+      btn.onclick = () => {
+        currentLvl = lvl;
+        renderPage();
+      };
+      selector.appendChild(btn);
+    });
+  }
+
+  function renderCanvas(s) {
+    const canvas = document.getElementById("canvas");
+    canvas.innerHTML = "";
+
+    if (currentLvl.includes("月台層") || (s.is_surface && currentLvl === "地面層")) {
+      const paidZone = document.createElement("div");
+      paidZone.className = "zone-outline outline-paid";
+      paidZone.style.left = "15px"; paidZone.style.top = "15px";
+      paidZone.style.width = "870px"; paidZone.style.height = "510px";
+      paidZone.innerText = s.is_surface ? "地面月台管制區 (PAID ZONE)" : "付費管制區 (PAID ZONE) ── 月台管制範圍";
+      canvas.appendChild(paidZone);
+
+      if (s.plat_config === "island-platform") {
+        const t1 = document.createElement("div"); t1.className = "rail-track"; t1.style.top = "140px"; canvas.appendChild(t1);
+        const t2 = document.createElement("div"); t2.className = "rail-track"; t2.style.top = "360px"; canvas.appendChild(t2);
+
+        const plat = document.createElement("div"); plat.className = "platform-slab";
+        plat.style.left = "30px"; plat.style.top = "165px"; plat.style.width = "840px"; plat.style.height = "180px";
+        plat.innerText = "中央島式月台";
+        canvas.appendChild(plat);
+
+        transitDevices.center.forEach(d => createNode(d));
+
+      } else if (s.plat_config === "side-platform") {
+        const t1 = document.createElement("div"); t1.className = "rail-track"; t1.style.top = "210px"; canvas.appendChild(t1);
+        const t2 = document.createElement("div"); t2.className = "rail-track"; t2.style.top = "280px"; canvas.appendChild(t2);
+
+        const p1 = document.createElement("div"); p1.className = "platform-slab";
+        p1.style.left = "30px"; p1.style.top = "40px"; p1.style.width = "840px"; p1.style.height = "110px";
+        p1.innerText = "側式月台 1 號月台 (上側上下樓設備不重疊)"; canvas.appendChild(p1);
+
+        const p2 = document.createElement("div"); p2.className = "platform-slab";
+        p2.style.left = "30px"; p2.style.top = "350px"; p2.style.width = "840px"; p2.style.height = "110px";
+        p2.innerText = "側式月台 2 號月台 (下側上下樓設備不重疊)"; canvas.appendChild(p2);
+
+        transitDevices.top.forEach(d => createNode(d));
+        transitDevices.bottom.forEach(d => createNode(d));
+
+      } else if (s.plat_config === "2-island-4-track" || s.plat_config === "2-island-4-track-turnback") {
+        const t1 = document.createElement("div"); t1.className = "rail-track"; t1.style.top = "30px"; canvas.appendChild(t1);
+        const t2 = document.createElement("div"); t2.className = "rail-track"; t2.style.top = "165px"; canvas.appendChild(t2);
+        const t3 = document.createElement("div"); t3.className = "rail-track"; t3.style.top = "325px"; canvas.appendChild(t3);
+        const t4 = document.createElement("div"); t4.className = "rail-track"; t4.style.top = "460px"; canvas.appendChild(t4);
+
+        const platA = document.createElement("div"); platA.className = "platform-slab";
+        platA.style.left = "30px"; platA.style.top = "55px"; platA.style.width = "840px"; platA.style.height = "100px";
+        platA.innerText = "島式月台 A ── 軌道貼合月台邊緣";
+        canvas.appendChild(platA);
+
+        const platB = document.createElement("div"); platB.className = "platform-slab";
+        platB.style.left = "30px"; platB.style.top = "350px"; platB.style.width = "840px"; platB.style.height = "100px";
+        platB.innerText = "島式月台 B ── 軌道貼合月台邊緣";
+        canvas.appendChild(platB);
+
+        transitDevices.top.forEach(d => createNode(d));
+        transitDevices.bottom.forEach(d => createNode(d));
+
+      } else if (s.plat_config === "2-side-4-track-passing") {
+        const trackY = [140, 190, 290, 340];
+        trackY.forEach((y, i) => {
+          const track = document.createElement("div");
+          track.className = `rail-track ${(i===1||i===2)?'rail-passing':''}`;
+          track.style.top = `${y}px`;
+          canvas.appendChild(track);
+        });
+
+        const p1 = document.createElement("div"); p1.className = "platform-slab";
+        p1.style.left = "30px"; p1.style.top = "40px"; p1.style.width = "840px"; p1.style.height = "90px";
+        p1.innerText = "側式月台 1 號月台 (外側停靠線)"; canvas.appendChild(p1);
+
+        const p2 = document.createElement("div"); p2.className = "platform-slab";
+        p2.style.left = "30px"; p2.style.top = "390px"; p2.style.width = "840px"; p2.style.height = "90px";
+        p2.innerText = "側式月台 2 號月台 (外側停靠線)"; canvas.appendChild(p2);
+
+        transitDevices.top.forEach(d => createNode(d));
+        transitDevices.bottom.forEach(d => createNode(d));
+      }
+
+    } else if (currentLvl.includes("大廳層") || currentLvl.includes("天橋")) {
+      const freeZone = document.createElement("div");
+      freeZone.className = "zone-outline outline-free";
+      freeZone.style.left = "15px"; freeZone.style.top = "15px";
+      freeZone.style.width = "870px"; freeZone.style.height = "510px";
+      freeZone.innerText = s.is_surface ? "外圍環形非付費天橋大廳 (FREE ZONE)" : "外圍環形非付費穿堂大廳 (FREE ZONE)";
+      canvas.appendChild(freeZone);
+
+      const paidIsland = document.createElement("div");
+      paidIsland.className = "zone-outline outline-paid";
+      paidIsland.style.left = "380px"; paidIsland.style.top = "45px";
+      paidIsland.style.width = "475px"; paidIsland.style.height = "450px";
+      paidIsland.innerText = s.is_surface ? "中央付費管制天橋 (PAID OVERPASS) ── 上下設備包含在此管制島內" : "中央付費管制島 (PAID ZONE) ── 所有的電梯、樓梯、扶梯安全包含在此";
+      canvas.appendChild(paidIsland);
+
+      const gate = document.createElement("div"); gate.className = "facility-node icon-6";
+      gate.style.left = "363px"; gate.style.top = "60px"; gate.style.width = "16px"; gate.style.height = "420px";
+      gate.innerHTML = "6<br>.<br>驗<br>票<br>閘<br>門<br>列"; canvas.appendChild(gate);
+
+      const info1 = document.createElement("div"); info1.className = "facility-node icon-8";
+      info1.style.left = "338px"; info1.style.top = "110px"; info1.style.width = "65px"; info1.style.height = "65px";
+      info1.innerHTML = "8<br>雙向跨界<br>服務台 1"; canvas.appendChild(info1);
+
+      const tvm = document.createElement("div"); tvm.className = "facility-node icon-7";
+      tvm.style.left = "40px"; tvm.style.top = "60px"; tvm.style.width = "140px"; tvm.style.height = "35px";
+      tvm.innerText = "7. 自動售票機牆"; canvas.appendChild(tvm);
+
+      const phone = document.createElement("div"); phone.className = "facility-node icon-4";
+      phone.style.left = "40px"; phone.style.top = "460px"; phone.style.width = "75px"; phone.style.height = "25px";
+      phone.innerText = "4.電話"; canvas.appendChild(phone);
+
+      const wc = document.createElement("div"); wc.className = "facility-node icon-5";
+      wc.style.left = "135px"; wc.style.top = "385px"; wc.style.width = "180px"; wc.style.height = "100px";
+      wc.innerText = "5. 盥洗室"; canvas.appendChild(wc);
+
+      const exA = document.createElement("div"); exA.className = "station-exit-sign";
+      exA.style.left = "235px"; exA.style.top = "20px"; exA.style.width = "80px"; exA.style.height = "15px";
+      exA.innerHTML = "出口1"; canvas.appendChild(exA);
+
+      if (s.exit_count === 2) {
+        const exB = document.createElement("div"); exB.className = "station-exit-sign";
+        exB.style.left = "2px"; exB.style.top = "320px"; exB.style.width = "15px"; exB.style.height = "80px";
+        exB.innerHTML = "出<br>口<br>2"; canvas.appendChild(exB);
+      }
+
+      if (s.plat_config === "island-platform") {
+        transitDevices.center.forEach(d => createNode(d));
+      } else {
+        transitDevices.top.forEach(d => createNode(d));
+        transitDevices.bottom.forEach(d => createNode(d));
+      }
+
+    } else {
+      const freeZone = document.createElement("div");
+      freeZone.className = "zone-outline outline-free";
+      freeZone.style.left = "15px"; freeZone.style.top = "15px";
+      freeZone.style.width = "870px"; freeZone.style.height = "510px";
+      freeZone.innerText = "地面站前外部廣場區域 (非付費開放空間)";
+      canvas.appendChild(freeZone);
+
+      const exitSign = document.createElement("div");
+      exitSign.className = "station-exit-sign";
+      exitSign.style.left = "380px"; exitSign.style.bottom = "2px";
+      exitSign.style.width = "140px"; exitSign.style.height = "20px";
+      exitSign.innerText = "🚪 車站大門主出入口";
+      canvas.appendChild(exitSign);
+    }
+  }
+
+  function createNode(d) {
+    const el = document.createElement("div");
+    el.className = `facility-node ${d.className}`;
+    el.style.left = `${d.x}px`;
+    el.style.top = `${d.y}px`;
+    el.style.width = `${d.w}px`;
+    el.style.height = `${d.h}px`;
+    el.innerText = d.text;
+    document.getElementById("canvas").appendChild(el);
+  }
+
+  window.onload = () => {
+    loadStationData("FR01");
+  };
 </script>
 </body>
 </html>
