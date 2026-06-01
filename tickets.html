@@ -62,6 +62,25 @@
         </article>
       </div>
     </div>
+<div id="modal-ticket-detail" class="sys-modal">
+      <div class="sys-modal-content">
+        <h2 id="detail-ticket-name" style="color: #123b72; margin-top: 0; margin-bottom: 4px;">車票名稱</h2>
+        <p id="detail-ticket-info" style="color: #5c7088; margin-top: 0; margin-bottom: 8px; font-weight: bold;"></p>
+        
+        <div class="qr-container">
+          <div class="qr-placeholder"></div>
+          <p style="font-weight: bold; color: #1b4676; margin: 0; font-size: 14px; letter-spacing: 2px;">請掃描 QR Code</p>
+        </div>
+
+        <div class="nfc-animation">
+          <div class="nfc-icon">📱</div>
+          <p style="color: #27834b; font-weight: bold; margin: 4px 0 0 0; font-size: 16px;">快速通關準備就緒</p>
+          <p style="font-size: 12px; color: #5c7088; margin: 4px 0 0 0;">請持行動裝置直接在閘門感應</p>
+        </div>
+
+        <button class="sys-btn-primary" style="margin-top: 16px; padding: 10px; width: 100%;" onclick="closeModal('modal-ticket-detail')">關閉車票</button>
+      </div>
+    </div>
   </section>
   <section>
     <h1>票務資訊</h1>
@@ -156,8 +175,24 @@
   const priceCalc = document.getElementById('ticket-price-calc');
   const ticketListContainer = document.getElementById('ticket-list-container');
 
+  // 【核心功能】自動檢查並刪除過期車票
+  function checkAndRemoveExpiredTickets() {
+    const now = Date.now();
+    // 篩選出尚未過期的車票 (如果沒有設定 expiryTime 則視為永久有效)
+    const validTickets = myTickets.filter(ticket => !ticket.expiryTime || ticket.expiryTime > now);
+    
+    // 如果有車票被刪除了，更新資料庫
+    if (validTickets.length !== myTickets.length) {
+      myTickets = validTickets;
+      localStorage.setItem('flywan_tickets', JSON.stringify(myTickets));
+    }
+  }
+
   // 初始化畫面
   function renderDashboard() {
+    // 每次渲染儀表板前，先自動剔除過期車票
+    checkAndRemoveExpiredTickets();
+
     if (currentUser) {
       loginCard.style.display = 'none';
       userDashboard.style.display = 'block';
@@ -193,60 +228,36 @@
   distanceInput.addEventListener('input', () => {
     const dist = parseFloat(distanceInput.value) || 0;
     const price = 0.1 + (dist * 0.01);
-    // 解決 JavaScript 浮點數精度問題，取小數點後兩位
     priceCalc.textContent = parseFloat(price.toFixed(2));
   });
 
-  // 購買車票
+  // 購買車票（在此處加上有效期限設定）
   document.getElementById('do-buy-btn').addEventListener('click', () => {
     const dist = parseFloat(distanceInput.value) || 0;
     const price = parseFloat((0.1 + (dist * 0.01)).toFixed(2));
+    
+    const purchaseTime = Date.now();
+    // 設定車票有效期：這裡以「單程票 24 小時後過期」為例 (24小時 * 60分 * 60秒 * 1000毫秒)
+    const duration = 24 * 60 * 60 * 1000; 
+
     const newTicket = {
-      id: Date.now(),
+      id: purchaseTime,
       type: '單程票',
       name: `單程票 (${dist}公里)`,
       price: price,
-      date: new Date().toLocaleString()
+      date: new Date(purchaseTime).toLocaleString(),
+      expiryTime: purchaseTime + duration // 紀錄過期的時間戳記
     };
-    myTickets.unshift(newTicket); // 將新車票加到最前面
+
+    myTickets.unshift(newTicket);
     localStorage.setItem('flywan_tickets', JSON.stringify(myTickets));
     renderTickets();
     alert('購票成功！');
   });
 
-  // 渲染車票與退票功能
-  function renderTickets() {
-    ticketListContainer.innerHTML = '';
-    if (myTickets.length === 0) {
-      ticketListContainer.innerHTML = '<p style="color:#5c7088;">目前沒有車票記錄。</p>';
-      return;
-    }
-    myTickets.forEach(ticket => {
-      const div = document.createElement('div');
-      div.className = 'ticket-item';
-      div.innerHTML = `
-        <div>
-          <strong>${ticket.name}</strong>
-          <span>類型：${ticket.type} <br>金額：${ticket.price} 飛灣幣<br>時間：${ticket.date}</span>
-        </div>
-        <button class="refund-btn" onclick="doRefund(${ticket.id})">退票</button>
-      `;
-      ticketListContainer.appendChild(div);
-    });
-  }
-
-  window.doRefund = function(id) {
-    if(confirm('確定要退還此車票嗎？')) {
-      myTickets = myTickets.filter(t => t.id !== id);
-      localStorage.setItem('flywan_tickets', JSON.stringify(myTickets));
-      renderTickets();
-    }
-  };
-
-// 動態切換主題色
+  // 動態切換主題色
   function updateTheme() {
     const section = document.getElementById('personal-ticket-section');
-    // 檢查車票庫中是否包含「母親節」字樣的車票
     const hasMothersDay = myTickets.some(ticket => ticket.name.includes('母親節'));
     
     if (hasMothersDay) {
@@ -256,30 +267,70 @@
     }
   }
 
-  // 渲染車票與退票功能 (修改這段)
+  // 渲染車票與退票功能
   function renderTickets() {
     ticketListContainer.innerHTML = '';
     
-    // 每次重新渲染車票時，同步更新主題色
-    updateTheme();
+    updateTheme(); 
 
     if (myTickets.length === 0) {
       ticketListContainer.innerHTML = '<p style="color:#5c7088;">目前沒有車票記錄。</p>';
       return;
     }
+    
     myTickets.forEach(ticket => {
       const div = document.createElement('div');
       div.className = 'ticket-item';
+      
+      // 額外提示剩餘時間（可選，增加使用者體驗）
+      let expiryNote = '';
+      if (ticket.expiryTime) {
+        const timeLeft = ticket.expiryTime - Date.now();
+        const hoursLeft = Math.max(0, Math.floor(timeLeft / (1000 * 60 * 60)));
+        expiryNote = `<br><span style="color:#d9534f;">(剩餘有效時間：約 ${hoursLeft} 小時)</span>`;
+      }
+
       div.innerHTML = `
-        <div>
+        <div class="ticket-info-clickable" onclick="openTicketDetail(${ticket.id})">
           <strong>${ticket.name}</strong>
-          <span>類型：${ticket.type} <br>金額：${ticket.price} 飛灣幣<br>時間：${ticket.date}</span>
+          <span>類型：${ticket.type} <br>金額：${ticket.price} 飛灣幣<br>時間：${ticket.date}${expiryNote}</span>
         </div>
         <button class="refund-btn" onclick="doRefund(${ticket.id})">退票</button>
       `;
       ticketListContainer.appendChild(div);
     });
   }
+
+  // 開啟車票詳細畫面
+  window.openTicketDetail = function(id) {
+    // 開啟前再次確認該票是否過期
+    checkAndRemoveExpiredTickets();
+    
+    const ticket = myTickets.find(t => t.id === id);
+    if (ticket) {
+      document.getElementById('detail-ticket-name').textContent = ticket.name;
+      document.getElementById('detail-ticket-info').textContent = `${ticket.type} | ${ticket.price} 飛灣幣`;
+      document.getElementById('modal-ticket-detail').classList.add('active');
+    } else {
+      alert('該車票已過期或不存在！');
+      renderTickets();
+    }
+  };
+
+  // 關閉彈窗功能
+  window.closeModal = function(modalId) {
+    document.getElementById(modalId).classList.remove('remove'); // 修正原本寫法的 class 清除
+    document.getElementById(modalId).classList.remove('active');
+  };
+
+  // 手動退票
+  window.doRefund = function(id) {
+    if(confirm('確定要退還此車票嗎？')) {
+      myTickets = myTickets.filter(t => t.id !== id);
+      localStorage.setItem('flywan_tickets', JSON.stringify(myTickets));
+      renderTickets();
+    }
+  };
 
   // 執行初始化
   renderDashboard();
