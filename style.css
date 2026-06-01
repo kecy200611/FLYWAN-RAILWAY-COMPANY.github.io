@@ -670,3 +670,95 @@ ul.clean li::before {
   background: #ff4f8b;
   color: white;
 }
+
+/* 車票點擊區塊樣式 */
+.ticket-info-clickable {
+  cursor: pointer;
+  flex-grow: 1;
+  transition: opacity 0.2s;
+}
+.ticket-info-clickable:hover {
+  opacity: 0.6;
+}
+
+/* 系統彈窗樣式 (共用) */
+.sys-modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(18, 59, 114, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  justify-content: center;
+  align-items: center;
+}
+.sys-modal.active {
+  display: flex;
+}
+/* 1. 壓縮彈窗本身的上下內邊距 */
+.sys-modal-content {
+  background: white;
+  padding: 20px 24px; /* 上下縮減為 20px */
+  border-radius: 20px;
+  width: 100%;
+  max-width: 340px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  animation: popIn 0.3s ease-out;
+  text-align: center;
+}
+
+.nfc-icon {
+  font-size: 32px; /* 稍微縮小圖示 (原本 40px) */
+  margin-bottom: 4px; /* 減少與下方文字的距離 */
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.6; }
+  100% { transform: scale(1); opacity: 1; }
+}
+}@keyframes popIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* 2. 壓縮 QR 區塊的上下外/內邊距 */
+.qr-container {
+  margin: 12px 0; /* 縮小上下外邊距 */
+  padding: 12px;  /* 縮小上下內邊距 */
+  background: #f9fcff;
+  border-radius: 16px;
+  border: 1px solid #d7e2ee;
+}
+
+/* 3. QR Code 圖案再縮小一點，節省垂直空間 */
+.qr-placeholder {
+  width: 100px; /* 從 120px 縮小至 100px */
+  height: 100px;
+  margin: 0 auto 8px; /* 縮小與下方文字的距離 */
+  background-color: white;
+  background-image: 
+    linear-gradient(45deg, #123b72 25%, transparent 25%, transparent 75%, #123b72 75%, #123b72), 
+    linear-gradient(45deg, #123b72 25%, transparent 25%, transparent 75%, #123b72 75%, #123b72);
+  background-size: 20px 20px;
+  background-position: 0 0, 10px 10px;
+  border: 6px solid white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+/* 4. 壓縮 NFC 區塊的上下間距與圖示大小 */
+.nfc-animation {
+  margin-top: 12px; /* 縮減距離 */
+  padding-top: 12px; /* 縮減距離 */
+  border-top: 1px dashed #d7e2ee;
+}
+.nfc-icon {
+  font-size: 40px;
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.6; }
+  100% { transform: scale(1); opacity: 1; }
+}
