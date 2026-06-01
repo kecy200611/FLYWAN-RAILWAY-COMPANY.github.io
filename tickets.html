@@ -302,26 +302,28 @@
   }
 
   // 開啟車票詳細畫面
-  window.openTicketDetail = function(id) {
-    // 開啟前再次確認該票是否過期
-    checkAndRemoveExpiredTickets();
+window.openTicketDetail = function(id) {
+  checkAndRemoveExpiredTickets();
+  
+  const ticket = myTickets.find(t => t.id === id);
+  if (ticket) {
+    document.getElementById('detail-ticket-name').textContent = ticket.name;
+    document.getElementById('detail-ticket-info').textContent = `${ticket.type} | ${ticket.price} 飛灣幣`;
     
-    const ticket = myTickets.find(t => t.id === id);
-    if (ticket) {
-      document.getElementById('detail-ticket-name').textContent = ticket.name;
-      document.getElementById('detail-ticket-info').textContent = `${ticket.type} | ${ticket.price} 飛灣幣`;
-      document.getElementById('modal-ticket-detail').classList.add('active');
-    } else {
-      alert('該車票已過期或不存在！');
-      renderTickets();
-    }
-  };
+    const modal = document.getElementById('modal-ticket-detail');
+    modal.classList.add('active');
+    modal.style.display = 'block'; // 確保開啟時一定會顯示（或者配合你 CSS 的彈窗設定）
+  } else {
+    alert('該車票已過期或不存在！');
+    renderTickets();
+  }
+};
 
-  // 關閉彈窗功能
   window.closeModal = function(modalId) {
-    document.getElementById(modalId).classList.remove('remove'); // 修正原本寫法的 class 清除
-    document.getElementById(modalId).classList.remove('active');
-  };
+  const modal = document.getElementById(modalId);
+  modal.classList.remove('active');
+  modal.style.display = 'none'; // 強制隱藏，防止它掉到網頁下方
+};
 
   // 手動退票
   window.doRefund = function(id) {
