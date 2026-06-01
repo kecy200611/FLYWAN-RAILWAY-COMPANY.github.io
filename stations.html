@@ -595,14 +595,35 @@
       wc.style.left = "135px"; wc.style.top = "385px"; wc.style.width = "180px"; wc.style.height = "100px";
       wc.innerText = "5. 盥洗室"; canvas.appendChild(wc);
 
-      const exA = document.createElement("div"); exA.className = "station-exit-sign";
-      exA.style.left = "235px"; exA.style.top = "20px"; exA.style.width = "80px"; exA.style.height = "15px";
-      exA.innerHTML = "出口1"; canvas.appendChild(exA);
+      const hasGroundLevel = (s.group === "elevated" || s.group === "surface");
 
-      if (s.exit_count === 2) {
-        const exB = document.createElement("div"); exB.className = "station-exit-sign";
-        exB.style.left = "2px"; exB.style.top = "320px"; exB.style.width = "15px"; exB.style.height = "80px";
-        exB.innerHTML = "出<br>口<br>2"; canvas.appendChild(exB);
+      if (hasGroundLevel) {
+        const exA_esc = document.createElement("div");
+        exA_esc.className = "facility-node icon-1";
+        exA_esc.style.left = "205px"; exA_esc.style.top = "40px"; exA_esc.style.width = "55px"; exA_esc.style.height = "35px";
+        exA_esc.innerHTML = "1<br>電扶梯"; canvas.appendChild(exA_esc);
+
+        const exA_stair = document.createElement("div");
+        exA_stair.className = "facility-node icon-3";
+        exA_stair.style.left = "265px"; exA_stair.style.top = "40px"; exA_stair.style.width = "55px"; exA_stair.style.height = "35px";
+        exA_stair.innerHTML = "3<br>樓梯"; canvas.appendChild(exA_stair);
+
+        if (s.exits && s.exits.length === 2) {
+          const exB_elev = document.createElement("div");
+          exB_elev.className = "facility-node icon-2";
+          exB_elev.style.left = "15px"; exB_elev.style.top = "320px"; exB_elev.style.width = "55px"; exB_elev.style.height = "55px";
+          exB_elev.innerHTML = "2<br>電梯<br>(下樓)"; canvas.appendChild(exB_elev);
+        }
+      } else {
+        const exA = document.createElement("div"); exA.className = "station-exit-sign";
+        exA.style.left = "235px"; exA.style.top = "20px"; exA.style.width = "80px"; exA.style.height = "15px";
+        exA.innerHTML = "出口1"; canvas.appendChild(exA);
+
+        if (s.exits && s.exits.length === 2) {
+          const exB = document.createElement("div"); exB.className = "station-exit-sign";
+          exB.style.left = "2px"; exB.style.top = "320px"; exB.style.width = "15px"; exB.style.height = "80px";
+          exB.innerHTML = "出<br>口<br>2"; canvas.appendChild(exB);
+        }
       }
 
       if (s.plat_config === "island-platform") {
@@ -619,6 +640,27 @@
       freeZone.style.width = "870px"; freeZone.style.height = "510px";
       freeZone.innerText = "地面站前外部廣場區域 (非付費開放空間)";
       canvas.appendChild(freeZone);
+
+      const hasGroundLevel = (s.group === "elevated" || s.group === "surface");
+
+      if (hasGroundLevel) {
+        const g_esc = document.createElement("div");
+        g_esc.className = "facility-node icon-1";
+        g_esc.style.left = "205px"; g_esc.style.top = "40px"; g_esc.style.width = "55px"; g_esc.style.height = "35px";
+        g_esc.innerHTML = "1<br>電扶梯"; canvas.appendChild(g_esc);
+
+        const g_stair = document.createElement("div");
+        g_stair.className = "facility-node icon-3";
+        g_stair.style.left = "265px"; g_stair.style.top = "40px"; g_stair.style.width = "55px"; g_stair.style.height = "35px";
+        g_stair.innerHTML = "3<br>樓梯"; canvas.appendChild(g_stair);
+
+        if (s.exits && s.exits.length === 2) {
+          const g_elev = document.createElement("div");
+          g_elev.className = "facility-node icon-2";
+          g_elev.style.left = "15px"; g_elev.style.top = "320px"; g_elev.style.width = "55px"; g_elev.style.height = "55px";
+          g_elev.innerHTML = "2<br>電梯<br>(上樓)"; canvas.appendChild(g_elev);
+        }
+      }
 
       const exitSign = document.createElement("div");
       exitSign.className = "station-exit-sign";
