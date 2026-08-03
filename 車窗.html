@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="overlay">
+    <div id="menu-box" class="box">
+        <h2 style="color:var(--color-ato)">通勤電車車窗風景<br><span style="font-size:0.6em; color:#aaa">3D Continuous Environment</span></h2>
+        <div style="text-align:left;">
+            <label>起始車站</label><select id="start-sel"></select>
+            <label>行駛方向</label>
+            <select id="dir-sel">
+                <option value="down">去程 (看右側風景)</option>
+                <option value="up">回程 (看左側風景)</option>
+            </select>
+            <label>車種</label>
+            <select id="type-sel">
+                <option value="local">區間車 (站站停)</option>
+                <option value="semi_express" selected>通勤電車 (FR01~FR12各停, 其後快停)</option>
+                <option value="express">機場快速 (停靠大站)</option>
+            </select>
+        </div>
+        <button onclick="startGame()">手動開始旅程</button>
+    </div>
+</div>
+
+<div id="viewport"><canvas id="game-canvas"></canvas></div>
+<div id="window-overlay"></div>
+<div id="info-text">準備發車...</div>
+
+<script>
+    // 1. 車窗去背引擎
+    const WINDOW_IMAGE_URL = "http://googleusercontent.com/image_generation_content/183"; 
+    function loadAndKeyWindowImage() {
+        const img = new Image(); img.crossOrigin = "Anonymous";
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width; canvas.height = img.height;
+            const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0);
+            try {
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imgData.data;
+                for(let i = 0; i < data.length; i += 4) {
+                    let r = data[i], g = data[i+1], b = data[i+2];
+                    if(g > 100 && g > r * 1.3 && g > b * 1.3) data[i+3] = 0; 
+                }
+                ctx.putImageData(imgData, 0, 0);
+                document.getElementById('window-overlay').style.backgroundImage = `url(${canvas.toDataURL()})`;
+            } catch (e) {
+                document.getElementById('window-overlay').style.backgroundImage = `url(${WINDOW_IMAGE_URL})`;
+            }
+        };
+        img.src = WINDOW_IMAGE_URL;
+    }
+    loadAndKeyWindowImage();
+
+    // 2. 路線與車站資料
+    const STATIONS = [
+        { name: "FR01 飛灣工業區", dist: 0, exp: true }, { name: "FR02 飛灣港", dist: 7300, exp: false },
+        { name: "FR03 物流中心", dist: 8600, exp: false }, { name: "FR04 飛灣郵輪港", dist: 9800, exp: true },
+        { name: "FR05 濱江商務區", dist: 17000, exp: false }, { name: "FR06 市民廣場", dist: 18500, exp: false },
+        { name: "FR07 文化中心", dist: 19800, exp: false }, { name: "FR08 飛灣新站", dist: 21700, exp: true },
+        { name: "FR09 科創園", dist: 24000, exp: false }, { name: "FR10 飛灣學區", dist: 25200, exp: false },
+        { name: "FR11 飛灣大道", dist: 26900, exp: false }, { name: "FR12 飛灣公園", dist: 28500, exp: true },
+        { name: "FR13 錦湖", dist: 29900, exp: false }, { name: "FR14 鷺島", dist: 30400, exp: false },
+        { name: "FR15 空港新城", dist: 33200, exp: false }, { name: "FR16 飛灣機場", dist: 38100, exp: true },
+        { name: "FR17 翡翠花園", dist: 43300, exp: false }, { name: "FR18 紫荊苑", dist: 46500, exp: false },
+        { name: "FR19 御景新村", dist: 54700, exp: false }, { name: "FR20 自然保育中心", dist: 56100, exp: false },
+        { name: "FR21 綾路北站", dist: 57900, exp: true }, { name: "FR22 全京大道", dist: 59100, exp: false }
+    ];
+    const SPEED_ZONES = [
+        { start: 0, end: 400, limit: 45 }, { start: 9200, end: 9680, limit: 75 },
+        { start: 17900, end: 18380, limit: 75 }, { start: 28800, end: 29430, limit: 60 },
+        { start: 29500, end: 29820, limit: 90 }, { start: 32600, end: 32920, limit: 90 },
+        { start: 38400, end: 39030, limit: 90 }, { start: 57600, end: 58000, limit: 45 }
+    ];
+    const PHY = { MASS: 180000, MAX_TRAC: 185000, MAX_BRK: 280000, AERO: 6.0, ROLL: 2000, G: 9.8 };
+
+    let state = { active: false, v: 0, d: 0, p: 0, b: 5, door: true, doorSequenceActive: false, route: [], idx: 0, type: 'semi_express', dir: 'down', lastT: 0, atpLimit: 120, grade: 0 };
+
+    // 3. 音效引擎
+    let audioCtx, masterGain, motorHumOsc, motorHumGain, vvvfOsc, vvvfGain, rollNoise, rollFilter, rollGain;
+    function initAudio() {
+        if (audioCtx) return; 
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+        masterGain = audioCtx.createGain(); masterGain.gain.value = 1.0; masterGain.connect(audioCtx.destination);
+        motorHumOsc = audioCtx.createOscillator(); motorHumOsc.type = 'sine'; motorHumGain = audioCtx.createGain(); motorHumGain.gain.value = 0; motorHumOsc.connect(motorHumGain); motorHumGain.connect(masterGain); motorHumOsc.start();
+        vvvfOsc = audioCtx.createOscillator(); vvvfOsc.type = 'sine'; vvvfGain = audioCtx.createGain(); vvvfGain.gain.value = 0; vvvfOsc.connect(vvvfGain); vvvfGain.connect(masterGain); vvvfOsc.start();
+
+        let bufferSize = audioCtx.sampleRate * 2; 
+        let noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        let output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1; 
+        rollNoise = audioCtx.createBufferSource(); rollNoise.buffer = noiseBuffer; rollNoise.loop = true;
+        rollFilter = audioCtx.createBiquadFilter(); rollFilter.type = 'lowpass'; rollFilter.frequency.value = 150; 
+        rollGain = audioCtx.createGain(); rollGain.gain.value = 0;
+        rollNoise.connect(rollFilter); rollFilter.connect(rollGain); rollGain.connect(masterGain); rollNoise.start();
+    }
+    function updateAudio() {
+        if (!audioCtx) return;
+        let speedKph = Math.abs(state.v * 3.6);
+        if ((state.p > 0 || state.b > 0) && speedKph > 0.1) {
+            let pLevel = (state.p > 0) ? state.p/4 : state.b/8; 
+            let baseVol = 0.15 + (pLevel * 0.1);
+            if (speedKph < 35) {
+                vvvfOsc.frequency.setTargetAtTime(250 + speedKph * 12, audioCtx.currentTime, 0.1);
+                vvvfGain.gain.setTargetAtTime(baseVol * 0.3 * (speedKph > 15 ? 1 - ((speedKph - 15) / 20) : 1), audioCtx.currentTime, 0.1);
+            } else vvvfGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+            motorHumOsc.frequency.setTargetAtTime(80 + speedKph * 4.0, audioCtx.currentTime, 0.1);
+            motorHumGain.gain.setTargetAtTime(baseVol * 0.6 * (speedKph > 40 ? Math.max(0, 1 - ((speedKph - 40) / 50)) : 1.0) * (speedKph < 20 ? speedKph/20 : 1.0), audioCtx.currentTime, 0.1);
+        } else {
+            motorHumGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2); vvvfGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2);
+        }
+        if (speedKph > 0.1) {
+            rollGain.gain.setTargetAtTime(Math.min(Math.pow(speedKph / 140, 1.2) * 0.8, 0.8), audioCtx.currentTime, 0.1);
+            rollFilter.frequency.setTargetAtTime(150 + Math.min(speedKph, 120) * 8, audioCtx.currentTime, 0.1);
+        } else rollGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.1);
+    }
+    function playTrainDoorChime() {
+        if (!audioCtx) return; const now = audioCtx.currentTime;
+        for (let i = 0; i < 3; i++) {
+            let o1 = audioCtx.createOscillator(), g1 = audioCtx.createGain();
+            o1.type = 'sine'; o1.frequency.value = 659.25; o1.connect(g1); g1.connect(masterGain);
+            g1.gain.setValueAtTime(0, now+i); g1.gain.linearRampToValueAtTime(0.5, now+i+0.05); g1.gain.exponentialRampToValueAtTime(0.01, now+i+0.4);
+            o1.start(now+i); o1.stop(now+i+0.5);
+            let o2 = audioCtx.createOscillator(), g2 = audioCtx.createGain();
+            o2.type = 'sine'; o2.frequency.value = 523.25; o2.connect(g2); g2.connect(masterGain);
+            g2.gain.setValueAtTime(0, now+i+0.4); g2.gain.linearRampToValueAtTime(0.5, now+i+0.45); g2.gain.exponentialRampToValueAtTime(0.01, now+i+0.9);
+            o2.start(now+i+0.4); o2.stop(now+i+1.0);
+        }
+    }
+
+    // 4. 恢復完整 3D 場景引擎
+    let scene, camera, renderer, pathPoints = []; 
+    const TOTAL_DIST = 61900;
+    function easeInOut(t) { return t <= 0 ? 0 : (t >= 1 ? 1 : (1 - Math.cos(Math.PI * t)) / 2); }
+    function easeGrade(t) {
+        if (t <= 0) return 0; if (t >= 1) return 1;
+        const k = 0.2; return (t < k) ? (t * t) / (2 * k * (1 - k)) : ((t < 1 - k) ? (t - 0.5 * k) / (1 - k) : 1 - ((1 - t) * (1 - t)) / (2 * k * (1 - k)));
+    }
+    function getSmoothY(d) {
+        const m = [{s:0,e:8700,y1:10,y2:10}, {s:8700,e:9550,y1:10,y2:-10}, {s:9550,e:27550,y1:-10,y2:-10}, {s:27550,e:28250,y1:-10,y2:0}, {s:28250,e:30650,y1:0,y2:0}, {s:30650,e:31320,y1:0,y2:-10}, {s:31320,e:39100,y1:-10,y2:-10}, {s:39100,e:40440,y1:-10,y2:10}, {s:40440,e:46750,y1:10,y2:10}, {s:46750,e:47420,y1:10,y2:0}, {s:47420,e:61900,y1:0,y2:0}];
+        for(let r of m) if(d>=r.s && d<=r.e) return r.y1==r.y2 ? r.y1 : r.y1+(r.y2-r.y1)*easeGrade((d-r.s)/(r.e-r.s));
+        return d<0?10:0;
+    }
+    function buildWorldData() {
+        let cx=0, cz=0, ca=0;
+        for (let d=-80; d<=TOTAL_DIST; d+=2) {
+            let rt = 0;
+            if (d>=9200 && d<=9671) rt = 1/600; if (d>=17900 && d<=18371) rt = 1/600; 
+            if (d>=28800 && d<=29428) rt = -1/600; if (d>=29500 && d<=29814) rt = 1/600; 
+            if (d>=32600 && d<=32914) rt = 1/600; if (d>=38400 && d<=39028) rt = 1/600; 
+            ca+=rt*2; cx+=Math.sin(ca)*2; cz-=Math.cos(ca)*2;
+            pathPoints.push({ d, x: cx, y: getSmoothY(d), z: cz, a: ca });
+        }
+    }
+    function getPtDetail(td, off=0) {
+        let i = Math.floor((td+80)/2); if(i<0) i=0; if(i>=pathPoints.length) i=pathPoints.length-1;
+        let p1 = pathPoints[i], p2 = (i<pathPoints.length-1) ? pathPoints[i+1] : p1;
+        let rt = (td-p1.d)/2; if(rt<0) rt=0; if(rt>1) rt=1;
+        let a = p1.a+(p2.a-p1.a)*rt, nx = Math.cos(a), nz = Math.sin(a);
+        return { d: td, a: a, nx:nx, nz:nz, x: p1.x+(p2.x-p1.x)*rt+nx*off, y: p1.y+(p2.y-p1.y)*rt, z: p1.z+(p2.z-p1.z)*rt+nz*off, gr: (p2.y-p1.y)/2*1000 };
+    }
+    function getBaseOffsets(d) {
+        let L=-2, R=2, Lo=null, Ro=null;
+        for (let st of STATIONS) {
+            let ad = Math.abs(d - st.dist); if(ad > 250) continue;
+            let w = easeInOut((250-ad)/150); if(ad<100) w=1;
+            Lo = -2-4.0*w; Ro = 2+4.0*w; // 統一使用寬月台展開
+        }
+        return { L, R, Lo, Ro };
+    }
+    function createNoiseTex() {
+        const s = 64, d = new Uint8Array(s*s*4);
+        for(let i=0; i<s*s*4; i+=4) {
+            let v = Math.floor(Math.random()*80)+120, vi = Math.random()>0.8?50:0;
+            d[i]=v-vi; d[i+1]=v-vi; d[i+2]=v-vi; d[i+3]=255;
+        }
+        let t = new THREE.DataTexture(d, s, s, THREE.RGBAFormat); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.needsUpdate=true; return t;
+    }
+    function createContinuousWorld() {
+        const p=[], c=[], u=[]; const tex = createNoiseTex();
+        const aQ = (v1,v2,v3,v4,cH,isG) => {
+            let cl = new THREE.Color(cH), n = (Math.random()-0.5)*0.15;
+            let r=Math.max(0,cl.r+n), g=Math.max(0,cl.g+n), b=Math.max(0,cl.b+n);
+            p.push(v1.x,v1.y,v1.z, v2.x,v2.y,v2.z, v3.x,v3.y,v3.z, v1.x,v1.y,v1.z, v3.x,v3.y,v3.z, v4.x,v4.y,v4.z);
+            for(let i=0;i<6;i++) c.push(r,g,b);
+            if(isG) u.push(0,0,1,0,1,1,0,0,1,1,0,1); else u.push(0,0,0,0,0,0,0,0,0,0,0,0);
+        };
+        const pt = (n,nx,nz,o,y) => ({x:n.x+nx*o, y:y, z:n.z+nz*o});
+        const gWT = (y) => y>=0 ? y+1.2 : (y>=-6 ? 0.5 : y+6.0);
+        const pMat = new THREE.MeshLambertMaterial({color: 0x555555}), pGeo = new THREE.BoxGeometry(1.2,1,1.2);
+
+        for (let i=0; i<pathPoints.length-10; i+=10) { 
+            let p1=pathPoints[i], p2=pathPoints[i+10];
+            let o1=getBaseOffsets(p1.d), o2=getBaseOffsets(p2.d);
+            let wL1=(o1.Lo||o1.L)-4, wR1=(o1.Ro||o1.R)+4, wL2=(o2.Lo||o2.L)-4, wR2=(o2.Ro||o2.R)+4;
+            let n1x=Math.cos(p1.a), n1z=Math.sin(p1.a), n2x=Math.cos(p2.a), n2z=Math.sin(p2.a);
+            let wt1=gWT(p1.y), wt2=gWT(p2.y), b1=p1.y-0.1, b2=p2.y-0.1; 
+            
+            aQ(pt(p1,n1x,n1z,wR1,b1), pt(p2,n2x,n2z,wR2,b2), pt(p2,n2x,n2z,wL2,b2), pt(p1,n1x,n1z,wL1,b1), 0x4a4a4a, true); // 床
+            aQ(pt(p1,n1x,n1z,wL1,b1), pt(p2,n2x,n2z,wL2,b2), pt(p2,n2x,n2z,wL2,wt2), pt(p1,n1x,n1z,wL1,wt1), 0x777777, false); // 左牆
+            aQ(pt(p1,n1x,n1z,wR1,wt1), pt(p2,n2x,n2z,wR2,wt2), pt(p2,n2x,n2z,wR2,b2), pt(p1,n1x,n1z,wR1,b1), 0x777777, false); // 右牆
+            if (p1.y < -5) aQ(pt(p1,n1x,n1z,wL1,wt1), pt(p2,n2x,n2z,wL2,wt2), pt(p2,n2x,n2z,wR2,wt2), pt(p1,n1x,n1z,wR1,wt1), 0x333333, false); // 隧道頂
+            
+            if(p1.y >= -5) {
+                 let gy=-2.0; 
+                 aQ(pt(p1,n1x,n1z,-500,gy), pt(p2,n2x,n2z,-500,gy), pt(p2,n2x,n2z,wL2+1,gy), pt(p1,n1x,n1z,wL1+1,gy), 0x2d4c1e, true);
+                 aQ(pt(p1,n1x,n1z,wR1-1,gy), pt(p2,n2x,n2z,wR2-1,gy), pt(p2,n2x,n2z,500,gy), pt(p1,n1x,n1z,500,gy), 0x2d4c1e, true);
+                 if (b1 > gy + 0.5) {
+                     aQ(pt(p1,n1x,n1z,wL1+1,gy), pt(p2,n2x,n2z,wL2+1,gy), pt(p2,n2x,n2z,wR2-1,gy), pt(p1,n1x,n1z,wR1-1,gy), 0x2d4c1e, true);
+                     if (i % 40 === 0 && b1 > gy + 3.0) {
+                         let mesh = new THREE.Mesh(pGeo, pMat); mesh.scale.set(1, b1-gy, 1);
+                         mesh.position.set(p1.x, gy+(b1-gy)/2, p1.z); mesh.rotation.y = -p1.a; scene.add(mesh);
+                     }
+                 }
+            }
+        }
+        const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(p, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(c, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(u, 2)); geo.computeVertexNormals();
+        scene.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide, map: tex })));
+    }
+    function buildTracks() {
+        const rM = new THREE.MeshLambertMaterial({color: 0xffffff});
+        function bDT(arr) {
+            if(arr.length<2) return; const lV=[], rV=[];
+            for(let p of arr) { lV.push(new THREE.Vector3(p.x+p.nx*-0.71,p.y+0.1,p.z+p.nz*-0.71)); rV.push(new THREE.Vector3(p.x+p.nx*0.71,p.y+0.1,p.z+p.nz*0.71)); }
+            const gr = new THREE.Group();
+            gr.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(lV), parseInt(arr.length/4), 0.08, 4, false), rM));
+            gr.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(rV), parseInt(arr.length/4), 0.08, 4, false), rM));
+            scene.add(gr);
+        }
+        let pA=[], pB=[];
+        for (let p of pathPoints) { pA.push(getPtDetail(p.d, -2)); pB.push(getPtDetail(p.d, 2)); }
+        bDT(pA); bDT(pB);
+    }
+    function buildStations() {
+        const pM = new THREE.MeshLambertMaterial({color: 0x828282}); const sG = new THREE.BoxGeometry(4.2, 1.2, 160);
+        STATIONS.forEach(st => {
+            let p = getPtDetail(st.dist, 0); const gr = new THREE.Group();
+            gr.position.set(p.x, p.y+0.6, p.z); gr.rotation.y = -p.a;
+            const p1 = new THREE.Mesh(sG, pM); p1.position.x = -5.6;
+            const p2 = new THREE.Mesh(sG, pM); p2.position.x = 5.6;
+            gr.add(p1, p2); scene.add(gr);
+        });
+    }
+    function init3D() {
+        buildWorldData();
+        const vp = document.getElementById('viewport'), cv = document.getElementById('game-canvas');
+        renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true, logarithmicDepthBuffer: true });
+        renderer.setSize(vp.clientWidth, vp.clientHeight); renderer.setPixelRatio(window.devicePixelRatio);
+        scene = new THREE.Scene(); scene.fog = new THREE.FogExp2(0x87CEEB, 0.00015); scene.background = new THREE.Color(0x87CEEB);
+        camera = new THREE.PerspectiveCamera(60, vp.clientWidth / vp.clientHeight, 0.1, 5000);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6); dirLight.position.set(200, 500, 200); scene.add(dirLight);
+        createContinuousWorld(); buildTracks(); buildStations();
+        window.addEventListener('resize', () => { camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+    }
+
+    // 5. 自動駕駛與站點判斷
+    function calcATP() {
+        let g = getPtDetail(state.d); state.grade = (state.dir === 'down') ? g.gr : -g.gr;
+        let lim = 120, nextLim = 120;
+        SPEED_ZONES.forEach(z => {
+            let eS = (state.dir === 'down') ? z.start-5 : z.end+5, eE = (state.dir === 'down') ? z.end+130 : z.start-130;
+            let dist = (state.dir === 'down') ? (eS-state.d) : (state.d-eS);
+            if((state.dir === 'down' && state.d>=eS && state.d<=eE) || (state.dir === 'up' && state.d<=eS && state.d>=eE)) lim = Math.min(lim, z.limit);
+            else if(dist>0 && dist<2000) nextLim = Math.min(nextLim, Math.sqrt((z.limit/3.6)**2 + 2*(3.5/3.6)*dist)*3.6);
+        });
+        state.atpLimit = Math.min(lim, nextLim);
+    }
+    function processAutoPilot(dt) {
+        let curV = state.v*3.6, nSt = state.route[state.idx];
+        let tPos = (state.dir === 'down') ? nSt.data.dist+77 : nSt.data.dist-77;
+        let dist = Math.abs(tPos - state.d);
+
+        if (dist < 0.5 && curV < 1) {
+            state.v = 0; state.p = 0; state.b = 5;
+            if (!state.doorSequenceActive && state.idx < state.route.length) handleStationSequence(nSt.name);
+            return;
+        }
+        let reqD = (state.v*state.v)/(2*0.85);
+        if (dist <= reqD + 2) { state.p = 0; state.b = 5; } 
+        else {
+            if (curV < state.atpLimit - 1) { state.p = 4; state.b = 0; } 
+            else if (curV > state.atpLimit + 1) { state.p = 0; state.b = 4; } 
+            else { state.p = 0; state.b = 0; }
+        }
+    }
+    
+    // 【核心邏輯更新】每站停靠 30 秒，抵達下車站後中斷營運
+    function handleStationSequence(stName) {
+        state.doorSequenceActive = true; 
+        document.getElementById('info-text').innerText = `到達 ${stName}，車門開啟`; playTrainDoorChime();
+        
+        setTimeout(() => {
+            state.door = true;
+            document.getElementById('info-text').innerText = `目前停靠：${stName} (停留 30 秒)`;
+            
+            // 等待 30 秒後關門
+            setTimeout(() => {
+                document.getElementById('info-text').innerText = `車門關閉，準備發車`; playTrainDoorChime();
+                
+                setTimeout(() => {
+                    state.door = false; state.doorSequenceActive = false; state.idx++;
+                    
+                    if (state.idx >= state.route.length) { 
+                        // 已經到達下車站，停止模擬，提醒玩家可關閉視窗
+                        document.getElementById('info-text').innerText = "到達下車站，本列車終止營運，請關閉視窗下車"; 
+                        document.getElementById('info-text').style.color = "var(--color-err)";
+                        state.active = false; 
+                    } 
+                    else {
+                        document.getElementById('info-text').innerText = `前往下一站：${state.route[state.idx].name}`;
+                    }
+                }, 3000); // 關門 3 秒
+            }, 30000); // 停留 30 秒
+        }, 3000); // 開門 3 秒
+    }
+
+    function loop(now) {
+        if(!state.active) return;
+        let dt = (now - state.lastT)/1000; if(dt>0.1) dt=0.1; state.lastT = now;
+        calcATP();
+        if (state.door || state.doorSequenceActive) { state.v = 0; state.p = 0; state.b = 5; } 
+        else {
+            processAutoPilot(dt);
+            let trac = (state.p>0 && state.b===0) ? (state.p/4)*PHY.MAX_TRAC*Math.max(0.65, 1-(Math.abs(state.v)/36)*0.35) : 0;
+            let net = trac - ((state.v>0)?(PHY.ROLL+PHY.AERO*state.v*state.v):0) - PHY.MASS*PHY.G*(state.grade/1000) - (state.b/8)*PHY.MAX_BRK;
+            state.v += (net/PHY.MASS)*dt; if(state.v<0) state.v=0;
+            state.d += (state.dir === 'down') ? state.v*dt : -state.v*dt;
+        }
+        renderGame(); updateAudio(); requestAnimationFrame(loop);
+    }
+    function renderGame() {
+        const h = new Date().getHours(); let r,g,b;
+        if (h>=6 && h<17) {r=0.53; g=0.81; b=0.92;} else if (h>=17 && h<19) {r=0.8; g=0.5; b=0.2;} else {r=0.05; g=0.05; b=0.1;}
+        scene.background.setRGB(r,g,b); if(scene.fog) scene.fog.color.setRGB(r,g,b);
+        let off = (state.dir === 'down') ? 2 : -2; let p = getPtDetail(state.d, off);
+        camera.position.set(p.x, p.y+2.1, p.z);
+        let lX = p.x + ((state.dir==='down') ? Math.cos(p.a) : -Math.cos(p.a));
+        let lZ = p.z + ((state.dir==='down') ? Math.sin(p.a) : -Math.sin(p.a));
+        if(state.v>1) { let sh=(Math.random()-0.5)*0.005*(state.v/30); lX+=sh; p.y+=sh; }
+        camera.lookAt(lX, p.y+2.1, lZ); renderer.render(scene, camera);
+    }
+
+    // 6. 整合外部通訊與自動發車邏輯
+    function startGame(isAuto = false, tId = "", destId = null) {
+        const sIdx = parseInt(document.getElementById('start-sel').value);
+        state.dir = document.getElementById('dir-sel').value;
+        state.type = document.getElementById('type-sel').value;
+        
+        let raw = (state.dir === 'down') ? STATIONS.slice(sIdx) : [...STATIONS].reverse().slice((STATIONS.length-1)-sIdx);
+        state.route = [];
+        
+        // 依照指定邏輯過濾停靠站，並檢查下車站 (destId)
+        for(let i=1; i<raw.length; i++) {
+            let st = raw[i], stop = false;
+            if (state.type === 'local') stop = true;
+            else if (state.type === 'express') stop = st.exp;
+            else if (state.type === 'semi_express') {
+                if (st.dist <= 28500) stop = true; // FR01~FR12 各停
+                else stop = st.exp; // 其後快停
+            }
+            if (stop) {
+                state.route.push({ name: st.name, data: st });
+                // 如果本站是指定好的下車站，排入列表後就不再排後續站點
+                if (destId && st.name.includes(destId)) break;
+            }
+        }
+
+        let sD = raw[0].dist;
+        state.d = (state.dir === 'down') ? sD+77 : sD-77;
+        state.active = true; state.v = 0; state.idx = 0; 
+        
+        initAudio(); document.getElementById('overlay').style.display = 'none';
+        
+        if (isAuto) {
+            state.doorSequenceActive = true;
+            document.getElementById('info-text').innerText = `班次 ${tId} 車門關閉，請注意安全`;
+            playTrainDoorChime();
+            setTimeout(() => {
+                state.door = false; state.doorSequenceActive = false;
+                document.getElementById('info-text').innerText = `前往：${state.route[state.idx].name}`;
+            }, 3000);
+        } else {
+            state.door = false; document.getElementById('info-text').innerText = `前往：${state.route[state.idx].name}`;
+        }
+        state.lastT = performance.now(); requestAnimationFrame(loop);
+    }
+
+    window.onload = () => { 
+        init3D(); 
+        const uP = new URLSearchParams(window.location.search);
+        if (uP.has('startId')) {
+            document.getElementById('menu-box').style.display = 'none'; 
+            let startId = uP.get('startId');
+            let destId = uP.get('destId'); // 接收外部傳入的下車站
+            let sIdx = STATIONS.findIndex(s => s.name.includes(startId));
+            document.getElementById('start-sel').value = sIdx !== -1 ? sIdx : 0;
+            document.getElementById('dir-sel').value = uP.get('dir') || 'down';
+            document.getElementById('type-sel').value = uP.get('type') || 'semi_express';
+            let tId = uP.get('trainId') || '自動班次';
+
+            let btn = document.createElement('button');
+            btn.innerText = `進入 3D 車廂風景 (${tId})\n前往: ${destId || '終點'}\n\n[點擊以授權音效並自動發車]`;
+            btn.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;padding:40px;font-size:28px;background:var(--color-ato);color:#000;border:none;border-radius:15px;cursor:pointer;font-weight:bold;white-space:pre-wrap;text-align:center;box-shadow:0 10px 30px rgba(0,204,255,0.4);';
+            btn.onclick = () => {
+                initAudio(); if(audioCtx.state === 'suspended') audioCtx.resume();
+                btn.remove(); startGame(true, tId, destId);
+            };
+            document.getElementById('overlay').appendChild(btn);
+        } else {
+            const sel = document.getElementById('start-sel');
+            STATIONS.forEach((s, i) => { let o = document.createElement('option'); o.value = i; o.innerText = s.name; sel.appendChild(o); });
+        }
+    };
+</script>
+</body>
+</html>

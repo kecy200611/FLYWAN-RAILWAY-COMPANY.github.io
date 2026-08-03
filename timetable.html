@@ -38,90 +38,9 @@
     </div>
   </section>
 
-<main class="container">
-
-
-<section>
+  <section>
     <h2>線上時刻表查詢</h2>
     <p>選擇方向與車站，快速查詢發車時間。</p>
-
-<style>
-        /* .schedule-box 維持原樣 */
-        .schedule-box { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-top: 20px; }
-        
-        /* .control-group 維持原樣 */
-        .control-group { background: #eef2f7; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #dce4ec; }
-        .control-group label { display: block; font-weight: bold; margin-bottom: 8px; color: #555; }
-        
-        .direction-toggle { display: flex; gap: 10px; margin-bottom: 15px; }
-        .dir-btn { flex: 1; padding: 12px; border: 2px solid #cbd5e0; background: #fff; cursor: pointer; border-radius: 8px; font-weight: bold; color: #666; }
-        .dir-btn.active { border-color: #3498db; background-color: #ebf5fb; color: #2980b9; }
-        .schedule-box select { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 6px; margin-bottom: 15px; background: white; }
-        button.search-btn { width: 100%; padding: 14px; background-color: #2c3e50; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-        button.search-btn:hover { background-color: #1a252f; }
-        
-        /* ========================================= */
-        /* ★ 修改重點：固定結果區域的高度並加入捲軸 ★ */
-        /* ========================================= */
-/* ... 前面的樣式保持不變 ... */
-
-    /* 1. 設定主容器：讓它變成上下排列的彈性盒子，且外層不准捲動 */
-    #resultArea {
-        height: 400px;           /* 固定總高度 */
-        background-color: #fff;
-        border: 1px solid #eee;
-        border-radius: 6px;
-        padding: 10px;
-        
-        /* 關鍵設定：使用 Flexbox 佈局 */
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;        /* 禁止整個區域捲動，只讓內部表格捲動 */
-    }
-
-    /* 2. 新增：專門包裹表格的捲動區域 */
-    .table-scroll-wrapper {
-        flex: 1;                 /* 自動填滿剩餘高度 */
-        overflow-y: auto;        /* 只有這裡可以垂直捲動 */
-        margin-top: 10px;        /* 與上方標題保持一點距離 */
-    }
-
-    /* 3. 設定藍色標題列：固定在捲動區域的最頂端 */
-    .schedule-table th { 
-        position: sticky; 
-        top: 0;                  /* 黏在 .table-scroll-wrapper 的頂部 */
-        
-        background-color: #34495e; 
-        color: white; 
-        z-index: 10;             /* 確保浮在資料上方 */
-        box-shadow: 0 1px 0 #34495e;
-        
-        font-weight: normal; 
-        padding: 12px 15px; 
-        text-align: left; 
-    }
-
-    /* 修正標題文字樣式，確保不會被壓縮 */
-    #resultArea h3 {
-        margin: 0;
-        padding: 5px 0;
-        flex-shrink: 0;          /* 禁止標題被壓縮不見 */
-    }
-
-    /* ... 其他樣式保持不變 ... */
-        /* 以下維持原樣 */
-        .schedule-table { width: 100%; border-collapse: collapse; margin-top: 0; /* 修改: 上方間距交給 padding 處理 */ }
-        .schedule-table th, .schedule-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
-        .schedule-table th { background-color: #34495e; color: white; font-weight: normal; }
-        .schedule-table tr:nth-child(even) { background-color: #f8f9fa; }
-        .time-display { font-family: Consolas, monospace; font-size: 1.25rem; font-weight: bold; color: #2c3e50; }
-        .tag { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 0.85rem; color: white; min-width: 50px; text-align: center; }
-        .tag-local { background-color: #95a5a6; }
-        .tag-rapid { background-color: #e74c3c; }
-        .tag-commute { background-color: #27ae60; }
-        .tag-express { background-color: #8e44ad; }
-        .status-msg { text-align: center; color: #e74c3c; font-weight: bold; margin-top: 10px; }
-    </style>
 
     <div class="schedule-box">
         <div class="control-group">

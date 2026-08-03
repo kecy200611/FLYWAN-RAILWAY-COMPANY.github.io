@@ -2,664 +2,535 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <title>E300 電聯車機務段運轉手冊 (完整版)</title>
-    <style>
-        /* A4 列印設定 */
-        @page {
-            size: A4;
-            margin: 20mm 15mm;
-        }
-        
-        body {
-            font-family: "PMingLiU", "Times New Roman", serif;
-            line-height: 1.6;
-            color: #000;
-            background: #e0e0e0;
-            margin: 0;
-            padding: 20px;
-        }
-
-        .page {
-            background: white;
-            width: 210mm;
-            min-height: 297mm;
-            padding: 20mm;
-            margin: 0 auto 20px auto;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            box-sizing: border-box;
-            position: relative;
-            page-break-after: always;
-        }
-
-        @media print {
-            body { background: none; margin: 0; padding: 0; }
-            .page { width: 100%; margin: 0; box-shadow: none; page-break-after: always; }
-        }
-
-        /* 標題與內文樣式 */
-        h1 { font-size: 26pt; text-align: center; margin-bottom: 40px; font-weight: 900; font-family: "Microsoft JhengHei", sans-serif; }
-        h2 { font-size: 20pt; border-bottom: 3px double #000; padding-bottom: 10px; margin-top: 30px; font-family: "Microsoft JhengHei", sans-serif; }
-        h3 { font-size: 16pt; margin-top: 25px; background-color: #f4f4f4; padding: 8px; border-left: 8px solid #004b87; font-family: "Microsoft JhengHei", sans-serif; }
-        h4 { font-size: 13pt; margin-top: 20px; font-weight: bold; text-decoration: underline; }
-        
-        p, li { font-size: 11pt; text-align: justify; margin-bottom: 8px; }
-        ul, ol { margin-left: 20px; padding-left: 0; }
-        li { margin-bottom: 5px; }
-
-        /* 表格 */
-        table { width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 10pt; page-break-inside: avoid; }
-        th, td { border: 1px solid #000; padding: 8px; text-align: left; }
-        th { background-color: #e8e8e8; text-align: center; font-weight: bold; }
-
-        /* 警告框與備註 */
-        .warning-box { border: 2px solid red; padding: 15px; margin: 15px 0; page-break-inside: avoid; }
-        .warning-title { color: red; font-weight: bold; font-size: 12pt; display: block; margin-bottom: 5px; }
-        
-        .note-box { background-color: #f9f9f9; border-left: 4px solid #666; padding: 10px; margin: 10px 0; font-style: italic; font-size: 10pt; }
-
-        /* 檢查表樣式 */
-        .checklist { border: 1px solid #000; padding: 5px; margin: 10px 0; font-family: "Consolas", monospace; }
-        .cl-row { display: flex; justify-content: space-between; padding: 6px 10px; border-bottom: 1px dashed #ccc; }
-        .cl-row:last-child { border-bottom: none; }
-        .cl-item { font-weight: bold; }
-        .cl-check { font-weight: bold; }
-
-        /* 頁尾 */
-        .footer {
-            position: absolute;
-            bottom: 15mm;
-            left: 20mm;
-            right: 20mm;
-            text-align: center;
-            font-size: 9pt;
-            border-top: 1px solid #000;
-            padding-top: 5px;
-        }
-        .page-num::after { content: counter(page); }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="manual-body">
 
+<!-- 第一頁：封面 -->
 <div class="page" style="display: flex; flex-direction: column; justify-content: center; text-align: center;">
-    <div style="margin-top: 50px; font-size: 48pt; font-weight: 900; line-height: 1.2;">
+    <div style="margin-top: 50px; font-size: 46pt; font-weight: 900; line-height: 1.2; color: #004b87;">
         E300 型電聯車<br>
         機務段運轉手冊
     </div>
-    <div style="font-size: 24pt; margin-top: 20px; color: #555;">
+    <div style="font-size: 22pt; margin-top: 20px; color: #555; letter-spacing: 1px;">
         OPERATION MANUAL (DEPOT EDITION)
     </div>
     
-    <div style="margin: 80px auto; width: 60%; border: 5px solid #004b87; padding: 40px;">
-        <p style="font-size: 16pt;"><strong>適用車型：</strong> E300 (4輛/6輛編成)</p>
-        <p style="font-size: 16pt;"><strong>文件編號：</strong> DEPOT-OP-E300-V2.5</p>
-        <p style="font-size: 16pt;"><strong>修訂日期：</strong> 2026/01/28</p>
+    <div style="margin: 60px auto; width: 75%; border: 5px solid #004b87; padding: 35px; text-align: left; background-color: #fafafa;">
+        <p style="font-size: 14pt; margin-bottom: 12px;"><strong>適用車型：</strong> E300 (4輛/6輛固定編成)[cite: 1]</p>
+        <p style="font-size: 14pt; margin-bottom: 12px;"><strong>文件編號：</strong> DEPOT-OP-E300-V2.7</p>
+        <p style="font-size: 14pt; margin-bottom: 0px;"><strong>修訂日期：</strong> 2026/06/27</p>
     </div>
 
     <div style="margin-top: auto; margin-bottom: 50px;">
-        <p><strong>飛灣鐵路股份有限公司 機務處</strong></p>
-        <p>FEIWAN RAILWAY CO., ROLLING STOCK DEPT.</p>
+        <p style="font-size: 13pt; letter-spacing: 2px;"><strong>飛灣鐵路股份有限公司 機務處</strong>[cite: 1]</p>
+        <p style="font-size: 10pt; color: #666;">FEIWAN RAILWAY CO., ROLLING STOCK DEPT.[cite: 1]</p>
     </div>
+    <div class="footer">飛灣鐵路機務處內部文件 - 嚴禁外流</div>
 </div>
 
+<!-- 第二頁：目錄 -->
 <div class="page">
     <h1>目 錄 (Table of Contents)</h1>
-    <ul style="list-style: none;">
-        <li><strong>第一章 總則與車輛簡介</strong> ................................................. 1</li>
-        <li>　1.1 概論與主要諸元 .............................................................. 1</li>
-        <li>　1.2 編組配置圖 ...................................................................... 2</li>
-        <li><strong>第二章 車輛設備詳解</strong> ......................................................... 3</li>
-        <li>　2.1 駕駛艙介面配置 (Cab Layout) ........................................ 3</li>
-        <li>　2.2 操控裝置 (Master Controller & Switches) ........................ 4</li>
-        <li>　　2.2.1 主控制器 .................................................................. 4</li>
-        <li>　　2.2.2 燈光系統 (Head/Tail/Saloon) ................................... 5</li>
-        <li>　　2.2.3 雨刷與視線輔助 ...................................................... 6</li>
-        <li>　　2.2.4 鳴笛裝置 (Horn) ....................................................... 6</li>
-        <li>　　2.2.5 車門控制面板 (Door Control) ................................... 7</li>
-        <li>　2.3 PISC 旅客資訊系統 (重寫版) ......................................... 8</li>
-        <li>　2.4 保安與信號裝置 (Safety Systems) ................................. 10</li>
-        <li>　　2.4.1 ATP 列車自動防護系統 .......................................... 10</li>
-        <li>　　2.4.2 CBTC 與 TASC ........................................................ 11</li>
-        <li>　2.5 電力與輔助設備 .............................................................. 12</li>
-        <li>　　2.5.1 低壓盤與保險絲 (NFB) ........................................... 12</li>
-        <li><strong>第三章 標準操作程序 (SOP)</strong> ............................................... 13</li>
-        <li>　3.1 始業檢查 (Pre-Departure Check) ..................................... 13</li>
-        <li>　3.2 系統啟動與 PISC 設定 .................................................... 15</li>
-        <li>　3.3 軔機與保安裝置測試 ...................................................... 16</li>
-        <li>　3.4 出庫與正線行駛 .............................................................. 17</li>
-        <li>　3.5 洗車與調車作業 .............................................................. 18</li>
-        <li>　3.6 收班與斷電程序 .............................................................. 19</li>
-        <li><strong>第四章 簡易故障排除</strong> ......................................................... 20</li>
+    <ul style="list-style: none; line-height: 2.1; font-size: 11.5pt; padding-left: 10px;">
+        <li><strong>第一章 總則與車輛簡介</strong></li>
+        <li> 1.1 概論 ............................................................................................ Page 1[cite: 1]</li>
+        <li> 1.2 主要諸元 ........................................................................................ Page 1[cite: 1]</li>
+        <li> 1.3 編組配置圖 .................................................................................... Page 2[cite: 1]</li>
+        <li><strong>第二章 車輛設備詳解</strong></li>
+        <li> 2.1 駕駛艙完整介面與實體配備配置 (Cab Full Layout) ..................... Page 3[cite: 1]</li>
+        <li> 2.2 各控制台操控組件與儀表計量錶功能 ............................................. Page 3[cite: 1]</li>
+        <li> 2.3 PISC 旅客資訊與廣播控制面板介面 .............................................. Page 5[cite: 1]</li>
+        <li> 2.4 保安與信號系統 (Safety Systems) .................................................. Page 6[cite: 1]</li>
+        <li> 2.5 核心低壓配電盤與故障隔離旁路旋鈕面板配置 .............................. Page 6[cite: 1]</li>
+        <li><strong>第三章 標準操作程序 (SOP)</strong></li>
+        <li> 3.1 始業檢查程序 (Pre-Departure Check) ............................................ Page 8[cite: 1]</li>
+        <li> 3.2 系統啟動與 PISC 資訊系統開機設定程序 ...................................... Page 9[cite: 1]</li>
+        <li> 3.3 軔機與保安裝置測試 ...................................................................... Page 9[cite: 1]</li>
+        <li> 3.4 出庫與正線行駛操作要領 .............................................................. Page 10[cite: 1]</li>
+        <li> 3.5 洗車與調車作業程序 ...................................................................... Page 10[cite: 1]</li>
+        <li> 3.6 PISC 特殊廣播（防疫四語、緊急訊息）操作程序 .......................... Page 11[cite: 1]</li>
+        <li> 3.7 收班與斷電程序 (Shutdown) ........................................................ Page 11[cite: 1]</li>
+        <li><strong>第四章 系統全面故障排除指引 (Troubleshooting Guide)</strong></li>
+        <li> 4.1 故障處置原則與常見故障速查表 ...................................................... Page 12[cite: 1]</li>
+        <li> 4.2 升弓與高壓送電跳脫故障排除 .......................................................... Page 13</li>
+        <li> 4.3 總故障燈亮起與車門連鎖故障排除 .................................................. Page 13</li>
+        <li> 4.4 動力牽引不足與無法動車排除 .......................................................... Page 14</li>
+        <li> 4.5 軔機鎖死、氣壓異常與停留軔機不鬆排除 ...................................... Page 15</li>
+        <li> 4.6 保安裝置 (ATP) 異常緊軔與警醒裝置故障排除 .............................. Page 15</li>
     </ul>
     <div class="footer">Page i</div>
 </div>
 
+<!-- 第三頁：第一章 -->
 <div class="page">
-    <h1>第一章 總則與車輛簡介</h1>
+    <h2>第一章 總則與車輛簡介</h2>
 
     <h3>1.1 概論</h3>
-    <p>E300 型電聯車為飛灣鐵路之主力通勤車種。本型車設計以安全、舒適及高運量為目標，採用 AC 25kV 架空線供電，最高營運速度為 120 km/h。全車導入數位化 TCMS (列車控制監視系統) 以整合牽引、煞車、空調及 PIS 資訊。</p>
+    <p>E300 型電聯車為飛灣鐵路之主力通勤車種[cite: 1]。本型車設計以安全、舒適及高運量為目標[cite: 1]，採用 AC 25kV 架空線供電[cite: 1]，最高營運速度為 120 km/h[cite: 1]。全車導入數位化 TCMS (列車控制監視系統) 以整合牽引、煞車、空調及 PIS 資訊[cite: 1]。</p>
     
     <h3>1.2 主要諸元 (Specifications)</h3>
     <table>
-        <tr><th width="30%">項目</th><th>數據</th></tr>
-        <tr><td>軌距</td><td>1435 mm</td></tr>
-        <tr><td>供電電壓</td><td>AC 25,000 V / 60 Hz</td></tr>
-        <tr><td>編組方式</td><td>4 輛 (2M2T) / 6 輛 (3M3T)</td></tr>
-        <tr><td>加減速度</td><td>加速: 2.5 km/h/s <br> 常用減速: 3.5 km/h/s <br> 緊急減速: 4.5 km/h/s</td></tr>
-        <tr><td>載客人數 (6輛)</td><td>定員 1280 人 (座席+立位)</td></tr>
-        <tr><td>保安裝置</td><td>ATP / CBTC / TASC / 駕駛失能警惕 (Deadman)</td></tr>
+        <thead>
+            <tr><th width="35%">項目</th><th>數據</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>軌距</td><td>1435 mm[cite: 1]</td></tr>
+            <tr><td>供電電壓</td><td>AC 25,000 V / 60 Hz[cite: 1]</td></tr>
+            <tr><td>編組方式</td><td>4 輛 (2M2T) / 6 輛 (3M3T)[cite: 1]</td></tr>
+            <tr><td>加減速度</td><td>加速: 2.5 km/h/s <br> 常用減速: 3.5 km/h/s <br> 緊急減速: 4.5 km/h/s[cite: 1]</td></tr>
+            <tr><td>載客人數 (6輛)</td><td>定員 1280 人 (座席+立位)[cite: 1]</td></tr>
+            <tr><td>保安裝置</td><td>ATP / CBTC / TASC / 駕駛失能警惕 (Deadman)[cite: 1]</td></tr>
+        </tbody>
     </table>
 
-    <div class="footer">Page 1</div>
-</div>
-
-<div class="page">
     <h3>1.3 編組配置圖</h3>
-    <p>車輛採固定編組運轉，由駕駛拖車 (Tc) 與馬達車 (M) 組成。</p>
+    <p>車輛採固定編組運轉，由駕駛拖車 (Tc) 與馬達車 (M) 組成[cite: 1]。</p>
 
     <h4>A. 4 輛編成 (4-Car)</h4>
     <table>
-        <tr>
-            <th>車號</th><th>車種</th><th>主要設備</th>
-        </tr>
-        <tr><td>1</td><td>Tc1</td><td>SIV, Battery, ATC/ATP, PISC</td></tr>
-        <tr><td>2</td><td>M1</td><td>Pan, VVVF, Motor</td></tr>
-        <tr><td>3</td><td>M2</td><td>Pan, VVVF, Motor</td></tr>
-        <tr><td>4</td><td>Tc2</td><td>SIV, Battery, ATC/ATP</td></tr>
+        <thead>
+            <tr><th width="15%">車號</th><th width="20%">車種</th><th>主要設備</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>1</td><td>Tc1</td><td>SIV, Battery, ATC/ATP, PISC[cite: 1]</td></tr>
+            <tr><td>2</td><td>M1</td><td>Pan, VVVF, Motor[cite: 1]</td></tr>
+            <tr><td>3</td><td>M2</td><td>Pan, VVVF, Motor[cite: 1]</td></tr>
+            <tr><td>4</td><td>Tc2</td><td>SIV, Battery, ATC/ATP[cite: 1]</td></tr>
+        </tbody>
     </table>
 
     <h4>B. 6 輛編成 (6-Car)</h4>
     <table>
-        <tr>
-            <th>車號</th><th>車種</th><th>主要設備</th>
-        </tr>
-        <tr><td>1</td><td>Tc1</td><td>SIV, Battery, ATC/ATP</td></tr>
-        <tr><td>2</td><td>M1</td><td>Pan, VVVF</td></tr>
-        <tr><td>3</td><td>M2</td><td>Pan, VVVF</td></tr>
-        <tr><td>4</td><td>M1</td><td>Pan, VVVF</td></tr>
-        <tr><td>5</td><td>T</td><td>Trailer (無動力)</td></tr>
-        <tr><td>6</td><td>Tc2</td><td>SIV, Battery, ATC/ATP</td></tr>
+        <thead>
+            <tr><th width="15%">車號</th><th width="20%">車種</th><th>主要設備</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>1</td><td>Tc1</td><td>SIV, Battery, ATC/ATP[cite: 1]</td></tr>
+            <tr><td>2</td><td>M1</td><td>Pan, VVVF[cite: 1]</td></tr>
+            <tr><td>3</td><td>M2</td><td>Pan, VVVF[cite: 1]</td></tr>
+            <tr><td>4</td><td>M1</td><td>Pan, VVVF[cite: 1]</td></tr>
+            <tr><td>5</td><td>T</td><td>Trailer (無動力)[cite: 1]</td></tr>
+            <tr><td>6</td><td>Tc2</td><td>SIV, Battery, ATC/ATP[cite: 1]</td></tr>
+        </tbody>
     </table>
     <div class="note-box">
-        註：Pan (集電弓) 均設置於 M 車頂部；SIV (靜式變流器) 與蓄電池位於 Tc 車下。
+        註：Pan (集電弓) 均設置於 M 車頂部；SIV (靜式變流器) 與蓄電池位於 Tc 車下[cite: 1]。
     </div>
 
     <div class="footer">Page 2</div>
 </div>
 
+<!-- 第四頁：第二章 設備詳解 (1) -->
 <div class="page">
-    <h1>第二章 車輛設備詳解</h1>
+    <h2>第二章 車輛設備詳解</h2>
 
-    <h3>2.1 駕駛艙介面配置 (Cab Layout)</h3>
-    <p>E300 駕駛艙採人體工學設計，主要操作區分為三大部分：</p>
-    
+    <h3>2.1 駕駛艙完整介面與實體配備配置 (Cab Full Layout)</h3>
+    <p>E300 駕駛艙採高數位化與高度備援的實體開關相互整合設計[cite: 1]，內部核心實體設備依據空間及操作面板群組（參照實車照片）完整分類如下：</p>
     <ul>
-        <li><strong>F 區 (前方儀表區)：</strong> 包含數位化速度計 (DMI)、ATP 資訊顯示、氣壓表 (MR/BP/BC)、各種指示燈號 (車門、煞車、故障)。</li>
-        <li><strong>L 區 (左側操作台)：</strong> 包含 PISC 控制器、無線電手持機、投射燈開關、雨刷控制旋鈕。</li>
-        <li><strong>R 區 (右側操作台)：</strong> 包含 TCMS 觸控螢幕、車門開關控制盒、空氣壓縮機強制開關。</li>
-        <li><strong>C 區 (中央主控台)：</strong> 主控制器 (Master Controller)、逆轉機鑰匙孔、警惕按鈕、緊急停車按鈕 (E-Stop)。</li>
+        <li><strong>前方中央主儀表操作台：</strong> 包含數位化整合速度/時間/里程 LED 顯示板、CCTV 集電弓暨車側閉路監視器螢幕、雙針氣壓物理錶、送電控制核心開關與安全防護 ACK 應答區[cite: 1]。</li>
+        <li><strong>左側輔助功能面板區：** 包含 **PISC 旅客資訊與廣播控制螢幕主機**、列車防護無線裝置（紅色緊急發報鈕）、到站與臨停播音按鈕及下緣頭尾燈環境撥桿[cite: 1]。</li>
+        <li><strong>右側動力與方向主控區：</strong> 包含動力/常用軔機複合主控制手柄、獨立軔機操作閥（空氣制動柄）、方向逆轉手柄及主控電門鑰匙孔[cite: 1]。</li>
+        <li><strong>左椅側牆面環境配電盤：</strong> 包含時刻表照明燈、儀表背光、除霧線與駕駛室減光開關。</li>
+        <li><strong>後方及頂部壁櫃盤：</strong> 包含上方輔助燈光 NFB 面板、中央大型核心無熔絲開關配電盤、以及位於底部的重型安全故障隔離旋鈕面板（Bypass 旁路盤）。</li>
+    </ul>
+
+    <h3>2.2 各控制台操控組件與儀表計量錶功能</h3>
+
+    <h4>2.2.1 前方主儀表控制台（中央安全送電與監控區）</h4>
+    <ul>
+        <li><strong>數位整合顯示計：** 左側的大型雙列紅字 LED 顯示幕，上排同步呈現目前日期時間與 **「實際車速 (km/hr)」**；下排長亮呈現 **「累積公里數 (Km)」**，下方設有綠色測試鍵[cite: 1]。</li>
+        <li><strong>CCTV 閉路監視螢幕：** 位於正中央，即時投射車頂集電弓與電車線接觸動態，其上緣與側邊貼有 **「運轉中如須隔離 ATP 應先通報調度所後使（方）得關閉 ATP」** 之嚴格指令標籤。</li>
+        <li><strong>核心送電縱向鈕組：** 位於監視螢幕左側，由上至下控制車輛供電命脈：
+            <ul>
+                <li><code>[昇弓 綠] / [降弓 紅] (PanUS / PanDS)</code>：下達受電弓上升或下降指令。</li>
+                <li><code>[復位 白] (Reset)</code>：迴路故障、跳脫時的一鍵嘗試清除重設按鈕。</li>
+                <li><code>[VCB切開 黑] / [VCB投入 黃] (VTS)</code>：控制車頂真空斷路器的開閉。</li>
+                <li><code>[電氣隔離 (APCO)]</code>：緊急時物理阻斷本端電氣訊號。</li>
+            </ul>
+        </li>
+        <li><strong>雙針空氣壓力錶組 (Pressure Gauge)：** 位於螢幕右側兩具 Nabtesco 製造之圓形雙針物理錶，連續監控全車氣軔安全。
+            <ul>
+                <li>**上錶（總風缸壓）：** 紅針代表 **RED-MAIN RESERVOIR (總風缸壓力)**；黑針代表 **BLACK-BRAKE PIPE (列車管壓力)**。單位為 bar。</li>
+                <li>**下錶（軔缸壓力）：** 紅針與黑針分別監控 **BRAKE CYLINDER 1 & 2 (各轉向架軔缸煞車氣壓)**。</li>
+            </ul>
+        </li>
+        <li><strong>主控制台中央應答組：** 下緣突起面板配置有實體 **「風量控制旋鈕（低、切、高）」**、**「高、喇叭、低音汽笛撥桿」**、藍色 **「發話行調無線按鈕」** 以及直徑 45mm 的紅色圓形 **「ATP確認 ACK 按鈕」**[cite: 1]。</li>
+    </ul>
+
+    <h4>2.2.2 駕駛台頂部七狀態指示燈組（核心安全光條）</h4>
+    <p>縱向及橫向高度整合的防護安全指示燈，可直接亮起呈現狀態：</p>
+    <ul>
+        <li><strong>阻力不足 (SBLp) [紅]：** 電軔發電與電阻消耗出力不敷煞車所需時警告亮起。</li>
+        <li><strong>電車線電壓檢測 (LVLp) [黃]：** 當集電弓吸取高壓電正常時長亮（運轉中必須維持亮起狀態）。</li>
+        <li><strong>總故障 (GFLp) [紅帶⚠️標誌]：** 全車控制監視系統 TCMS 偵測到任何車廂有異常事件時暴亮警告。</li>
+        <li><strong>補助風泵 (ACMLp) [黃]：** 空壓不足時，車底輔助空氣壓縮機正在運轉打氣時長亮。</li>
+        <li><strong>關閉後連鎖控制 (STILp) [綠]：** 全車車門皆安全關閉並鎖定成功之訊號，長亮才具備動車條件。</li>
+        <li><strong>門通過連鎖控制 (DTILp) [黃帶車門標誌]：** 執行特殊旁路或越過車門安全電路限制時亮起。</li>
+        <li><strong>停留軔機 (PBLp) [紅帶(P)標誌]：** 當車輛停留煞車（手煞車）處於煞緊鎖死狀態時長亮，鬆軔後熄滅。</li>
     </ul>
 
     <div class="footer">Page 3</div>
 </div>
 
+<!-- 第五頁：第二章 設備詳解 (2) -->
 <div class="page">
-    <h3>2.2 操控裝置 (Controls & Switches)</h3>
-
-    <h4>2.2.1 主控制器 (Master Controller)</h4>
-    <p>採用左手操作之單把手設計，整合牽引與煞車功能，具備「警惕裝置 (Deadman)」功能。</p>
+    <h4>2.2.3 右側動力牽引與空氣軔機操作台</h4>
     <ul>
-        <li><strong>P (Power) 區：</strong> P1 ~ P4 四段牽引級位。往後拉為加速。</li>
-        <li><strong>N (Neutral)：</strong> 惰行位，無動力輸出。</li>
-        <li><strong>SB (Service Brake) 區：</strong> B1 ~ B7 七段常用煞車級位。往前推為減速。</li>
-        <li><strong>EMG (Emergency)：</strong> 推至最前方卡槽，觸發緊急煞車，並連動撒沙裝置與電笛長鳴。</li>
+        <li><strong>主控制器 (Master Controller)：** 左手單把手式配置。往司機員方向後拉為 P1 ~ P4 牽引加速；往前推為 N 位惰行與 B1 ~ B7 常用空氣軔機減速；推至最前方机械卡槽為 EMG 緊急緊軔。手柄整合 Deadman 警惕下壓板[cite: 1]。</li>
+        <li><strong>獨立軔機閥操作手柄（空氣制動柄）：** 位於主柄右側，為一具重型金屬曲柄，上方設有精確煞車刻度、鎖定插銷孔與中性位標記。用於單獨精細調整全車空氣軔機之氣壓比例，主要在坡道調車、機械留駐或電軔失效時與主控制器複合使用。</li>
+        <li><strong>逆轉機手柄與鑰匙孔：** 配置於右側控制台下緣，插入專屬主控鑰匙轉至「I（開啟）」位置方可激活全車駕駛台，方向桿設有 FWD 前進、NEU 中立與 REV 後退檔位。</li>
     </ul>
-    <div class="note-box">
-        注意：手柄設有 Deadman 壓板，行駛中若手鬆開超過 3 秒，將自動觸發緊急煞車。
-    </div>
 
-    <h4>逆轉機 (Reverser)</h4>
-    <p>位於主控制器右側，需插入司機員鑰匙方可轉動。</p>
+    <h4>2.2.4 左側播音與牆面環境控制開關組</h4>
     <ul>
-        <li><strong>OFF：</strong> 鎖定位置，鑰匙可拔出。</li>
-        <li><strong>FWD：</strong> 前進位。</li>
-        <li><strong>NEU：</strong> 中立位 (僅供通電但不移動時使用)。</li>
-        <li><strong>REV：</strong> 後退位 (限速 25 km/h)。</li>
+        <li><strong>列車播音快捷開關：** 位於左側控制台頂部，綠色 <code>[到站播音 Arrival]</code>、黃色 <code>[臨時停車 Stop]</code>、粉紅色 <code>[執行中斷 Interrupt]</code> 三顆方形燈式按鈕，供與自動廣播系統連動與人工口頭強切[cite: 1]。</li>
+        <li><strong>列車防護無線裝置：** 彩色播音按鈕左下方黃色區塊內，嵌有一顆帶實體鋼骨防護圈之紅色大按鈕，用於遭遇出軌、撞擊事故時向鄰近全線列車發射緊急攔截無線電訊號。</li>
+        <li><strong>下緣環境控制四撥桿：** 由左至右控制 **「尾燈 (TLpN)」**、**「下頭燈 (HLDL5)」**、**「上頭燈 (UHLD5)」** 與 **「上頭燈減光 (UHLDCS)」**，會車或進地下段時可切至減光位避免直射刺眼。</li>
+        <li><strong>椅側牆面實體切換盤：** 位於座椅側邊下緣，排有四具重載黑色功能開關，分別控制：
+            <ul>
+                <li>**駕駛室閱讀燈減光 (DLpS)：** 兩段式調校司機頭頂閱讀燈明暗。</li>
+                <li>**除霧裝置 (GHeN)：** 點亮前擋風玻璃內嵌式電熱絲，用以雨天或寒冷時電熱除霧[cite: 1]。</li>
+                <li>**儀表燈 (ILpN)：** 點亮主控台所有實體計量錶的背景背光。</li>
+                <li>**時刻表照明燈 (TMLpS)：** 開啟聚焦式小光源，直接點亮司機夾運行時刻表（路單）之區域。</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h3>2.3 PISC 旅客資訊與廣播控制面板介面</h3>
+    <p>本車配置數位 HMI 觸控式廣播主機總成[cite: 1]，詳細功能按鈕與畫面架構定義如下：</p>
+    <ul>
+        <li><strong>主畫面中央線別地圖：** 載入班次後呈現完整的車站拓撲方框圖</li>
+        <li><strong>右側螢幕軟體快速鍵：** 整合觸控式 <code>[到站播音]</code>、<code>[臨時停車]</code>、<code>[執行中斷]</code> 與 <code>[主畫面]</code>，與左側台實體按鈕功能同步冗餘。</li>
+        <li><strong>螢幕底部十二功能切換列：** 供開車前進行全面性參數設定，自左至右、上下雙列依序排列為：
+            <br>上列：<code>[系統關機]</code> <code>[車次設定]</code> <code>[下一車站站設定]</code> <code>[訊息顯示]</code> <code>[記憶卡]</code> <code>[手動設定]</code>
+            <br>下列：<code>[設定預覽]</code> <code>[測試]</code> <code>[模擬]</code> <code>[日期/時間設定]</code> <code>[音樂播放]</code> <code>[HELP]</code>
+        </li>
+        <li><strong>車次屬性配置矩陣（點選車次設定進入）：** 畫面呈現 1 至 15 車之車廂管理矩陣，供司機員逐節點選定義，選定屬性後方格亮起，按 [確定] 即通訊寫入各車廂車外 LED 及車內播音資料庫。</li>
     </ul>
 
     <div class="footer">Page 4</div>
 </div>
 
+<!-- 第六頁：第二章 設備詳解 (3) -->
 <div class="page">
-    <h4>2.2.2 燈光系統 (Lighting System)</h4>
-    <p>燈光開關主要位於駕駛台左側面板 (L 區) 及右側牆面。</p>
+    <h3>2.4 保安與信號系統 (Safety Systems)</h3>
 
-    <table style="width: 100%;">
-        <tr>
-            <th width="25%">設備名稱</th>
-            <th>位置</th>
-            <th>操作說明</th>
-        </tr>
-        <tr>
-            <td><strong>頭燈 (Headlight)</strong></td>
-            <td>L 區旋鈕</td>
-            <td>
-                分為三段：<strong>OFF / DIM (近光) / HI (遠光)</strong>。<br>
-                正線行駛務必開啟 HI；地下段或會車時切換至 DIM。
-            </td>
-        </tr>
-        <tr>
-            <td><strong>標示燈 (Tail Light)</strong></td>
-            <td>L 區撥桿</td>
-            <td>
-                紅色尾燈。正常運轉時，尾端車自動開啟；<br>
-                調車或故障處置時可強制手動開啟 (MANUAL ON)。
-            </td>
-        </tr>
-        <tr>
-            <td><strong>儀表照明 (Panel Dimmer)</strong></td>
-            <td>F 區旋鈕</td>
-            <td>可無段調整儀表板背光亮度，夜間或地下段應調暗以防眩光。</td>
-        </tr>
-        <tr>
-            <td><strong>客室燈 (Saloon Light)</strong></td>
-            <td>TCMS 螢幕</td>
-            <td>
-                由 TCMS 控制頁面操作。<br>
-                模式：<strong>全開 (100%) / 減光 (50%) / 關閉</strong>。
-            </td>
-        </tr>
-    </table>
+    <h4>2.4.1 ATP (Automatic Train Protection) 列車自動防護系統</h4>
+    <p>ATP 為本車最核心之號誌連續監控保安裝置[cite: 1]。其結合車底 BTM 天線與沿線地上感應器（Balise）通訊計算動態速度曲線[cite: 1]。</p>
+    <div class="warning-box">
+        <span class="warning-title">ATP 運轉規範限制：</span>
+        實際速度 &gt; 允許速度 + 2 km/h 觸發間歇蜂鳴警告[cite: 1]；超速 &gt; 5 km/h 常用空氣煞車自動介入減速[cite: 1]；越過紅燈 (EOA) 則觸發緊急緊軔煞停[cite: 1]。運轉中若發生號誌變更，必須在 2 秒內按下紅色 **「ATP確認 ACK 按鈕」** 應答消音[cite: 1]。
+    </div>
 
-    <div class="footer">Page 5</div>
-</div>
-
-<div class="page">
-    <h4>2.2.3 雨刷與視線輔助 (Wipers)</h4>
-    <p>本車配備電動雨刷與清洗液噴射裝置。</p>
+    <h4>2.4.2 CBTC 與 TASC 系統</h4>
     <ul>
-        <li><strong>控制旋鈕 (Wiper Knob)：</strong> 位於左側台。
-            <ul>
-                <li><strong>OFF：</strong> 停止並自動歸位 (Auto Park)。</li>
-                <li><strong>INT：</strong> 間歇刷動 (約 5 秒一次)。</li>
-                <li><strong>LOW：</strong> 低速連續。</li>
-                <li><strong>HIGH：</strong> 高速連續 (大雨時使用)。</li>
-            </ul>
-        </li>
-        <li><strong>清洗鈕 (Washer)：</strong> 按下並保持，噴出清洗液並連動雨刷刷動 3 次。</li>
-        <li><strong>除霧線 (Demister)：</strong> 前擋風玻璃配有電熱除霧功能，開關位於 L 區。</li>
+        <li><strong>CBTC 移動授權：** 駕駛台 DMI 螢幕長條圖連續顯示 MA（移動授權）安全距離，歸零時車輛強制鎖死禁止移動[cite: 1]。</li>
+        <li><strong>TASC 精準停靠：** 進站前 300 公尺接收地面感應器訊號[cite: 1]，系統自動接管煞車控制，司機員保持電門在 N 或 P 位[cite: 1]，列車即可精確停靠於月台對應門位置（標準誤差 ±30cm 內，「TASC OK」綠燈亮起）[cite: 1]。</li>
     </ul>
 
-    <h4>2.2.4 鳴笛裝置 (Horn)</h4>
-    <p>依據用途區分為氣笛 (主要) 與電笛 (次要)。</p>
+    <h3>2.5 核心低壓配電盤與故障隔離旁路旋鈕面板配置</h3>
+
+    <h4>2.5.1 中央大型無熔絲開關配電盤 (NFB)</h4>
+    <p>位於座椅後方保護壁櫃內（需三角鑰匙開啟），分上下兩排控制各次系統電力迴路保護：</p>
+    <table>
+        <thead>
+            <tr><th width="15%">行排位置</th><th width="25%">NFB 標示代碼</th><th>控制、訊號暨過載保護電路設備</th></tr>
+        </thead>
+        <tbody>
+            <tr><td rowspan="8"><strong>上排開關組</strong></td><td>BVN1 / BVN2 / BVN3</td><td>軔機電路控制 1、2、3（全車煞車控制電腦 ECU 控制總電源）</td></tr>
+            <tr><td>PBSN</td><td>停留軔機控制機（手煞車空氣電磁閥迴路電源）</td></tr>
+            <tr><td>MCN1 / MCN2</td><td>VCB/PAN 控制（真空斷路器與受電弓電路）、牽引控制（馬達控制單元 TCU 電源）</td></tr>
+            <tr><td>HCRN / BatCN</td><td>主控端控制電源（定義發令端）、電瓶控制（蓄電池低壓主控制電源）</td></tr>
+            <tr><td>BatKN1 / BatKN2</td><td>電瓶接觸器 110VDC 電路、電瓶接觸器 24VDC 電路總開關</td></tr>
+            <tr><td>ATPN / RUN</td><td>列車自動防護裝置 (ATP 主機電源)、ATP 記錄器 (行車黑盒子電源，**嚴禁切斷**)[cite: 1]</td></tr>
+            <tr><td>TCMSN</td><td>TCMS 110VDC 總控制系統（行車電腦中央處理單元主機電源）</td></tr>
+            <tr><td>DDUN / TISPN</td><td>TCMS 駕駛室顯示器螢幕電源、TCMS 旅客資訊通訊控制電路電源</td></tr>
+            <td rowspan="7"><strong>下排開關組</strong></td><td>CMCN / CMGN / CMSN</td><td>主風泵控制（壓縮機電路）、主風泵調壓器開關、多連掛主風泵同步線路電源</td></tr>
+            <tr><td>APCN2</td><td>中性區間電路控制（通過電力中性無電區之自動感應切斷迴路電源）</td></tr>
+            <tr><td>DILpN / STCN</td><td>自動門連鎖指示燈電源（頂部 STILp 訊號）、自動門連鎖指引（伸縮腳踏板控制電路）</td></tr>
+            <tr><td>TRN / TPRN</td><td>列車調度無線裝置 (大容量 20A 行調無線電主機電源)、列車防護無線裝置 (緊急發報鈕電源)</td></tr>
+            <tr><td>CCN / HEBN</td><td>傾斜控制電源（傾斜裝置車體机构電力）、身障緊急連絡蜂鳴器電路電源</td></tr>
+            <tr><td>EmIVCN / DCCN</td><td>通風扇緊急控制電路電源、緊急控制系統總電路電源</td></tr>
+            <tr><td>WPN / SON3</td><td>車頭前蓋鼻端蓋開合氣壓閥電源、雨刷器暨駕駛室維修插座3電源</td></tr>
+        </tbody>
+    </table>
+
+    <h4>2.5.2 系統故障隔離旋鈕面板（Bypass 面板）與重型開關</h4>
+    <p>位於配電盤側邊透明防護罩內，提供感應器損壞時的安全旁路越權控制：</p>
     <ul>
-        <li><strong>腳踏開關 (Foot Pedal)：</strong> 位於駕駛台下方地板。
-            <ul>
-                <li>輕踩：<strong>電笛 (Electric)</strong>，聲音較柔和，用於站內或警示月台旅客。</li>
-                <li>重踩：<strong>氣笛 (Air)</strong>，聲音宏亮，用於正線警示、平交道或緊急狀況。</li>
-            </ul>
+        <li><strong>上排系統隔離旋鈕（由左至右）：**
+            <br>1. `電氣隔離開關 (APCOS)`：手動徹底隔離單車動力出力。
+            <br>2. `牽引力控制模式 (EMOS) [速控 / 牽引力]`：切換定速自動模式（速控）或司機員按百分比純手動出力（牽引力）。
+            <br>3. `警醒裝置隔離開關 (VCOS) [正常 / 隔離]`：當警醒腳踏板短路誤報引發緊急煞車時進行訊號旁路[cite: 1]。
+            <br>4. `警醒裝置測試 (VGTS) [正常 / 測試]`：整備出車前，切至測試位點檢踏板功能。
+            <br>5. `停留軔機連鎖開關 (PARS) [正常 / 隔離]`：手煞車已鬆開但感應器誤報未鬆開鎖死動力時，切至隔離強制動車。
+            <br>6. `暫停軔機開關 (HBCOS)`：手動強行解鎖用於坡道防溜逸的「保持軔機/零速煞車」殘餘風壓。
         </li>
-        <li><strong>面板按鈕 (Panel Button)：</strong> 位於 C 區，功能同電笛，供站立或不便踩踏時使用。</li>
+        <li><strong>下排車門連鎖隔離旋鈕（由左至右）：**
+            <br>7. `自動門連鎖隔離開關 (DIRS) [正常 / 隔離]`：**極核心開關**。當車門故障無法緊閉導致全車無法動車時，隔離此鈕可強制讓電腦誤判門已關好，允許火車輸入牽引力起動。
+            <br>8. `腳踏板連鎖隔離開關 (STIRS) [正常 / 隔離]`：旁路車門下方伸縮腳踏板未能完全縮回車體的故障連鎖。
+            <br>9. `零速度隔離開關 (5KRS) [正常 / 隔離]`：車速感應器故障導致停妥後客室門無法開啟，隔離此鈕可強行允許開門。
+            <br>10. `全列車腳踏板強制縮回 (STACS) [正常 / 縮回]`：下達最高硬體指令，強制全車伸縮腳踏板物理縮回車內。
+        </li>
+        <li><strong>底座計量錶與重型開關組：**
+            <br>面板最下方排有三個實體指針計量錶：**「110V電瓶充電電流錶 (A)」**、**「110V電瓶電壓錶 (V)」** 與 **「扭力錶 (kN)」**。其下方對應設有兩組金屬重載 **「CN1 / CN2 蓄電池電壓計防護隔離插銷/刀閘開關」**、**「限速系統開關」** 以及帶有黃色封條之 **「動力緊軔旁路重啟閘」**。
+        </li>
     </ul>
 
     <div class="footer">Page 6</div>
 </div>
 
+<!-- 第七頁：第三章 標準操作程序 (1) -->
 <div class="page">
-    <h4>2.2.5 車門控制面板 (Door Control)</h4>
-    <p>位於駕駛台右側 (R 區) 邊緣，設有防止誤觸之保護蓋。</p>
+    <h2>第三章 標準操作程序 (SOP)</h2>
+    
+    <h3>3.1 始業檢查 (Pre-Departure Check)</h3>
+    <p>本程序於每日出庫前執行，確保列車各系統功能正常[cite: 1]。</p>
 
-    <div style="border: 2px solid #333; padding: 15px; background: #fdfdfd;">
-        <p><strong>1. 車門選擇開關 (Door Select Switch)</strong></p>
-        <p>三段式鑰匙開關：<strong>左側 (LEFT) / 切 (OFF) / 右側 (RIGHT)</strong>。</p>
-        <ul>
-            <li>必須轉向月台側，開門按鈕才有效用。</li>
-            <li>行駛中必須置於 OFF 位。</li>
-        </ul>
+    <h4>A. 駕駛室靜態檢查</h4>
+    <div class="checklist">
+        <div class="cl-row"><span class="cl-item">1. 電瓶電壓 (Battery Volt)</span><span class="cl-check">確認 > 90V (檢視低壓指針錶或數位板)[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">2. NFB 配電盤</span><span class="cl-check">開啟後壁櫃，確認上下兩排無熔絲開關全數投入 (ON)[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">3. 手軔車 (Parking Brake)</span><span class="cl-check">確認施軔，主儀表七燈組 PBLp 紅色 (P) 燈長亮[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">4. 駕駛台開關位置</span><span class="cl-check">全數歸零 / 把手置於煞車位，方向機 OFF[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">5. 滅火器/擊破器</span><span class="cl-check">確認在位且壓力正常，封條無破損[cite: 1]</span></div>
+    </div>
 
-        <p><strong>2. 開門按鈕 (OPEN)</strong></p>
-        <p>黃色自復式按鈕。需在列車速度 < 1 km/h 且 TASC 允許下長按 1 秒方可作動。</p>
+    <h4>B. 設備功能測試 (低壓)</h4>
+    <div class="checklist">
+        <div class="cl-row"><span class="cl-item">1. 司機員鑰匙插入開機</span><span class="cl-check">插入逆轉機鑰匙孔轉至 ON，主控台螢幕背光激活[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">2. 燈光系統測試</span><span class="cl-check">切換前頭燈(遠/近光)、尾燈、牆面儀表與時刻表燈作動正常[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">3. 雨刷功能點檢</span><span class="cl-check">操作旋鈕測試噴水、間歇、高低速，歸位 (Auto Park) 正常[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">4. 雙音鳴笛測試</span><span class="cl-check">輕踩地板踏板確認電笛，重踩確認強磁氣笛，聲音宏亮[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">5. 廣播對講測試</span><span class="cl-check">點動 PISC 廣播測試按鈕，確認客室內外喇叭無雜音[cite: 1]</span></div>
+    </div>
 
-        <p><strong>3. 關門按鈕 (CLOSE)</strong></p>
-        <p>黑色按鈕。按下後啟動關門警示音，3 秒後車門開始關閉。</p>
-
-        <p><strong>4. 再開門按鈕 (RE-OPEN)</strong></p>
-        <p>當夾人/物偵測作動或需重新開啟車門時使用，此鈕無 TASC 鎖定限制。</p>
-
-        <p><strong>5. 側燈 (Side Indicators)</strong></p>
-        <p>車外橘色指示燈，亮起代表該車門未完全鎖定。</p>
+    <h4>C. 車外巡視檢查 (Exterior Walk-around)</h4>
+    <div class="checklist">
+        <div class="cl-row"><span class="cl-item">1. 車體鋼板外觀</span><span class="cl-check">目視車體無變形、無不明外傷或塗鴉[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">2. 轉向架與一二次懸吊</span><span class="cl-check">避震器無漏油、彈簧無裂損、清除器無卡滯異物[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">3. 車端連結器總成</span><span class="cl-check">電氣接頭清潔緊密、氣管無洩漏聲[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">4. 車下重電設備箱</span><span class="cl-check">箱門鎖緊固、外觀正常、無燒焦異味與異常高溫[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">5. 車頂受電集電弓</span><span class="cl-check">降弓狀態下確認碳刷磨耗未達限度、框架無變形[cite: 1]</span></div>
+    </div>
+    <div class="warning-box">
+        <strong>特別注意：</strong> 檢查集電弓時，務必確認集電弓處於降弓狀態，且人員與帶電部分保持 1.5 公尺以上安全距離[cite: 1]。
     </div>
 
     <div class="footer">Page 7</div>
 </div>
 
+<!-- 第九頁：第三章 標準操作程序 (2) -->
 <div class="page">
-    <h3>2.3 PISC 旅客資訊系統 (PISC)</h3>
-    <p><strong>(Passenger Information System Controller)</strong></p>
-    <p>本系統負責整合 LED 顯示器 (車頭/車側/車內)、自動播音 (DVA) 及車廂對講機。舊版操作介面已更新，請依照下列標準程序操作。</p>
+    <h3>3.2 系統啟動與 PISC 資訊系統開機設定程序</h3>
 
-    <h4>2.3.1 系統架構</h4>
+    <h4>A. 高壓送電 (Energizing)</h4>
+    <div class="checklist">
+        <div class="cl-row"><span class="cl-item">1. 集電弓開關 (Pan)</span><span class="cl-check">操作主控台 [UP] 開關，確認受電弓升弓指示燈亮起[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">2. 電線線網電壓檢出</span><span class="cl-check">確認七燈組 LVLp 黃燈長亮，高壓網壓表正確顯示約 AC 25kV[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">3. VCB 真空斷路器開關</span><span class="cl-check">操作 [CLOSE] 鍵，聽見車頂真空斷路器閉合撞擊聲[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">4. 輔助電源變流器 (SIV)</span><span class="cl-check">確認 SIV 綠燈亮，車廂冷氣空調與照明全數啟用[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">5. 主空氣壓縮機 (CMP)</span><span class="cl-check">CMP 自動啟動充氣，待雙針錶總風缸 MR 達 8.5 bar 停止[cite: 1]</span></div>
+    </div>
+
+    <h4>B. PISC 車次與編成屬性螢幕設定步驟</h4>
+    <div class="sop-step-box">
+        <span class="sop-step-title">步驟 1. 登入與進入車次設定頁面</span>
+        <p>於 PISC 螢幕登入個人司機ID[cite: 1]。點選控制面板最下方功能列的 <strong>[車次設定]</strong> 鍵[cite: 1]，畫面切換至車種車次綜合設定分頁。</p>
+    </div>
+    <div class="sop-step-box">
+        <span class="sop-step-title">步驟 2. 選擇營運車種與班次</span>
+        <p>依照路單點選左下角對應車種（如：<code>[太魯閣自強號]</code>、<code>[新自強號]</code>、<code>[自強號]</code>[cite: 1]）。隨後於右側車次鍵盤選定當日班次號碼（如 <code>[107]</code>、<code>[111]</code>、<code>[333]</code>），系統自動帶出起點、終點站與對應線別（如南迴線、山線）[cite: 1]。</p>
+    </div>
+    <div class="sop-step-box">
+        <span class="sop-step-title">步驟 3. 填入車廂屬性配置矩陣</span>
+        <p>點選進入 1 至 15 車之車廂矩陣畫面。依照今日固定編組，逐節點選定義該車廂之特種硬體設施：<code>[對號/自由座]</code>、<code>[身障車]</code>、<code>[公用電話]</code>、<code>[販賣機]</code>、<code>[商務車]</code>、<code>[客廳車]</code>、<code>[餐車]</code>[cite: 1]。方格點亮完成後，按 <strong>[確定]</strong> 進行通訊封存。</p>
+    </div>
+    <div class="sop-step-box">
+        <span class="sop-step-title">步驟 4. 載入資料庫並啟用主畫面</span>
+        <p>按壓螢幕上之 <strong>[主畫面]</strong> 鍵[cite: 1]，確認螢幕地圖順暢帶出完整的車站拓撲流程圖框，目前站反白顯示。設定空調恆溫 24°C[cite: 1]，確認 TCMS 主畫面顯示設備全車綠色正常[cite: 1]。</p>
+    </div>
+
+    <h3>3.3 軔機與保安裝置測試</h3>
+    <h4>A. 軔機貫通與獨立空氣制動試驗</h4>
+    <div class="checklist">
+        <div class="cl-row"><span class="cl-item">1. 主手柄 -> SERVICE 煞車位</span><span class="cl-check">下錶軔缸 BC 壓力線性上升，上錶列車管 BP 壓力線性下降[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">2. 主手柄 -> EMG 緊急緊軔位</span><span class="cl-check">BP 氣壓一秒內排空歸零，BC 湧入最大煞車制動壓力 4.5 bar[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">3. 主手柄 -> RELEASE 緩解位</span><span class="cl-check">BC 壓力順暢歸零，BP 迅速回充至行車標準 5.0 bar[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">4. 獨立軔機閥操作點檢</span><span class="cl-check">手動推拉右側空氣制動柄，確認可單獨、精確增減各車煞車缸 BC 氣壓</span></div>
+        <div class="cl-row"><span class="cl-item">5. 停留軔機鬆軔/緊軔測試</span><span class="cl-check">點動 PBS1/PBS2，確認手煞車物理動作與頂部七燈組 PBLp 紅燈對應相符[cite: 1]</span></div>
+    </div>
+    <h4>B. ATP 保安裝置自趨防護試驗</h4>
     <ul>
-        <li><strong>PCU (主控制單元)：</strong> 位於 Tc1 車，負責儲存路線資料庫。</li>
-        <li><strong>HMI 觸控螢幕：</strong> 司機員操作介面。</li>
-        <li><strong>SND (備用實體鍵盤)：</strong> 若觸控螢幕故障時之備援操作盤。</li>
+        <li>開啟 ATP 主電源，目視 DMI 螢幕自我診斷完成，確認無任何初始故障代碼，模式進入 MCS[cite: 1]。</li>
+        <li>手動踩踏腳下警醒踏板並按壓控制台中央紅色 **「ATP確認 ACK 按鈕」**[cite: 1]，確認警報蜂鳴應答切斷功能完全正常。</li>
     </ul>
-
-    <h4>2.3.2 操作介面說明</h4>
-    <table style="font-size: 9pt;">
-        <tr><th width="20%">功能頁籤</th><th>功能描述</th></tr>
-        <tr><td><strong>運行設定 (RUN)</strong></td><td>輸入車次、起訖站、司機員代碼。</td></tr>
-        <tr><td><strong>狀態監控 (STATUS)</strong></td><td>顯示各車廂廣播音量、LED 顯示狀態是否正常。</td></tr>
-        <tr><td><strong>緊急對講 (PEI)</strong></td><td>接聽旅客緊急通話 (紅燈閃爍時點擊接聽)。</td></tr>
-        <tr><td><strong>維修模式 (MAINT)</strong></td><td>僅供維修人員更新資料庫或測試單一喇叭使用。</td></tr>
-    </table>
 
     <div class="footer">Page 8</div>
 </div>
 
+<!-- 第十頁：第三章 標準操作程序 (3) -->
 <div class="page">
-    <h4>2.3.3 標準設定流程 (Setup Procedure)</h4>
-    <p>請於始業檢查通電後依序執行：</p>
+    <h3>3.4 出庫與正線行駛操作要領</h3>
 
-    <div style="margin-left: 20px; border-left: 2px solid #004b87; padding-left: 15px;">
-        <p><strong>Step 1: 系統登入</strong></p>
-        <p>開機後點選 [登入]，輸入司機員 ID (例如: 88001) 並按 [Enter]。</p>
-
-        <p><strong>Step 2: 載入班次</strong></p>
-        <p>進入 [運行設定] 頁面，輸入 <strong>車次號 (Train ID)</strong> (例如: 101)。系統將自動帶出起點與終點。</p>
-
-        <p><strong>Step 3: 確認路線 (Route Select)</strong></p>
-        <p>確認螢幕顯示之停靠站列表正確。若需變更 (如跳站、臨時改道)，請點選 [手動選擇] 修改。</p>
-
-        <p><strong>Step 4: 啟動模式 (Mode)</strong></p>
-        <p>確認模式設定為 <strong>[AUTO]</strong>。此模式下，系統將依據 GPS 與里程計訊號自動觸發離站/進站廣播。</p>
+    <h4>A. 發車前確認 (Departure Check)</h4>
+    <div class="checklist">
+        <div class="cl-row"><span class="cl-item">1. 車門狀態</span><span class="cl-check">全關 (All Closed) 且頂部七燈組 STILp 綠燈長亮[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">2. 氣壓狀態</span><span class="cl-check">上錶總風缸 MR > 7.0 bar，列車管 BP 穩定維持 5.0 bar[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">3. 逆轉機手柄</span><span class="cl-check">推至 FWD (前進位)[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">4. 手軔車狀態</span><span class="cl-check">確認釋放緩解，主儀表 PBLp 紅色 (P) 燈完全熄滅[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">5. 移動授權 (MA)</span><span class="cl-check">確認 DMI 顯示有效且長度充足之綠色 MA 安全距離條[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">6. 指差確認</span><span class="cl-check">司機員執行手勢喚呼：「出發號誌，綠燈/進行！」[cite: 1]</span></div>
     </div>
 
-    <h4>2.3.4 特殊狀況操作</h4>
+    <h4>B. 行駛操作要領</h4>
     <ul>
-        <li><strong>手動觸發 (Manual Trigger)：</strong> 若 GPS 失效，請切換至 [MANUAL]，進站前按壓實體 <strong>[綠色按鈕 (ANN)]</strong> 播放進站廣播。</li>
-        <li><strong>臨時停車 (Delay)：</strong> 遇號誌臨停超過 1 分鐘，按壓實體 <strong>[黃色按鈕 (TEMP)]</strong> 播放道歉廣播。</li>
-        <li><strong>更正站名：</strong> 若系統顯示站名與實際不符，使用螢幕上之 [上一站] / [下一站] 箭頭進行修正。</li>
+        <li><strong>起步與定速：** 左手平順將主手柄推入 P2 或 P3 牽引級位，待列車起動且車輪無空轉後，再視路況推至 P4 最大出力級位[cite: 1]。達到目標速限前，預先將手柄拉回 N 位（惰行位），利用慣性自由滑行巡航[cite: 1]。</li>
+        <li><strong>減速與進站精準停靠：** 進站前 500 公尺，預先將主手柄推至 B1 ~ B3 低煞車級位平穩建立制動力[cite: 1]。當進站偵測到地面感應器且 TASC 燈亮起時，手柄保持在 N 或 P 位由電腦接管煞車減速[cite: 1]，將車輛精準停靠於月台停止線 ±30cm 範疇內[cite: 1]。</strong></li>
     </ul>
+
+    <h3>3.5 洗車與段內調車作業程序</h3>
+    <ul>
+        <li><strong>自動洗車程序：** 確認全車客室門窗緊閉、雨刷切至 OFF 歸位[cite: 1]。在 TCMS 空調頁面上手動勾選激活「洗車模式」，強制關閉全車外氣風門以防藥水吸入[cite: 1]。將號誌系統切換至限制手動 (RM) 模式[cite: 1]，嚴格維持 3 ~ 5 km/h 之恆定極低速通過洗車機[cite: 1]。</li>
+        <li><strong>段內調車速限限制：** 於機務段內進行股道間移動調車，基礎速限為 25 km/h[cite: 1]；當列車準備駛入狹窄的維修坑道、檢查坑或地坑輪庫時，限速強制調降至 **5 km/h**[cite: 1]。全程必須與地面調車員落實無線電「喚呼應答」與指令覆誦[cite: 1]。</strong></li>
+    </ul>
+
+    <h3>3.6 PISC 特殊廣播（防疫四語、緊急訊息）操作程序</h3>
+    <p>運轉區間中，遇有特定特殊政令或突發事故，司機員必須依照控制面板右側告示牌執行：</p>
+    
+    <h4>A. 【防疫四語播音操作程序 SOP】</h4>
+    <div style="border: 1px solid #666; padding: 10px; background-color: #f9f9f9; margin-bottom: 10px;">
+        <ol>
+            <li>按下廣播面板最下排功能列之 <strong>「音樂播放」</strong> 觸控鍵。</li>
+            <li>選中 <strong>「防疫四語.mp3」** 檔案 → 按壓中央 **「&lt;&lt;」** 鍵將檔案移置左側預備播放清單。</li>
+            <li>檔案就位後，按下清單下方的 <strong>「播放」</strong> 鍵 → 系統開始對全車廂宣導播音。</li>
+            <li>廣播進行中若欲提早結束或中斷，按壓螢幕或面板上的 <strong>「停止」</strong> 鍵。</li>
+            <li>播音結束後，按下排功能列的 <strong>「下一車站設定」</strong> 鍵 → 系統安全返回原始主畫面行車地圖。</li>
+        </ol>
+    </div>
+
+    <h4>B. 【緊急訊息播音操作程序 SOP】</h4>
+    <div style="border: 1px solid #666; padding: 10px; background-color: #f9f9f9; margin-bottom: 10px;">
+        <ol>
+            <li>按下廣播面板最下排功能列之 <strong>「訊息顯示」</strong> 觸控鍵。</li>
+            <li>於檔案清單中點選對應狀況之緊急訊息，確認該行文字呈現 <strong>「反白」</strong> 高亮鎖定狀態。</li>
+            <li>內容無誤後，按下畫面中之 <strong>「播放」</strong> 鍵 → 系統以最高優先權向全車廂強制灌入緊急播音。</li>
+            <li>事故排除或狀況解除後，按下排功能列之 <strong>「下一車站設定」</strong> 鍵 → 系統返回原始行車主畫面。</li>
+        </ol>
+    </div>
 
     <div class="footer">Page 9</div>
 </div>
 
+<!-- 第十一頁：第三章 標準操作程序 (4) -->
 <div class="page">
-    <h3>2.4 保安與信號裝置 (Safety Systems)</h3>
-    <p>E300 配備多重冗餘之安全防護系統，確保列車運行絕對安全。</p>
-
-    <h4>2.4.1 ATP (Automatic Train Protection) 列車自動防護系統</h4>
-    <p>ATP 為本車最核心之保安裝置，其功能為連續監控列車速度，防止超速與闖紅燈。</p>
-    
-    <div class="warning-box">
-        <span class="warning-title">ATP 作動原理：</span>
-        ATP 電腦根據前方閉塞區間狀態、路線速限及坡度，計算出一條「動態速度曲線 (Dynamic Profile)」。
+    <h3>3.7 收班與斷電程序 (Shutdown)</h3>
+    <p>當日運轉結束，列車返回停放股道後，司機員必須確實執行下列斷電 shutdown 程序[cite: 1]：</p>
+    <div class="checklist">
+        <div class="cl-row"><span class="cl-item">1. 停車定位</span><span class="cl-check">確認列車完全停妥於規定位置，與終端止衝檔保持安全距離[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">2. 手煞車安全施加</span><span class="cl-check">按下實體 PBS2 紅色鈕，確認主儀表七燈組 PBLp 紅燈長亮[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">3. PISC 系統防護關機</span><span class="cl-check">於廣播螢幕點選下排 [系統關機] 鍵，下達軟體開關關機並登出帳號[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">4. 車廂輔助電路斷電</span><span class="cl-check">透過 TCMS 螢幕全面關閉全車客室冷氣空調、通風扇與客室照明[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">5. 真空斷路器斷開</span><span class="cl-check">操作主控台開關切至 [OPEN] 位，切斷高壓負載[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">6. 安全降弓</span><span class="cl-check">操作開關推至 [DOWN]，目視窗外並確認主儀表降弓指示燈滅[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">7. 主控鑰匙拔取解鎖</span><span class="cl-check">方向逆轉手柄打回 NEU，將主控鑰匙旋至 OFF 位並取下，控制台全面熄滅[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">8. 低壓蓄電池總開關切斷</span><span class="cl-check">打開座椅後方櫃體，將 Battery 電瓶主開關切至 OFF，阻斷蓄電池低壓供電[cite: 1]</span></div>
+        <div class="cl-row"><span class="cl-item">9. 儲氣槽手動洩水</span><span class="cl-check">下車至車外拉開總風缸 MR 底部洩水閥，排空冷凝水防止管線鏽蝕結冰[cite: 1]</span></div>
     </div>
-
-    <ul>
-        <li><strong>監控模式：</strong>
-            <ul>
-                <li><strong>MCS (Master Control):</strong> 正常模式，依據速限行駛。</li>
-                <li><strong>RM (Restricted Manual):</strong> 限制手動模式，速限 25 km/h (無信號時使用)。</li>
-            </ul>
-        </li>
-        <li><strong>超速防護：</strong>
-            <ul>
-                <li>當實際速度 > 允許速度 + 2 km/h：<strong>警示音 (Alarm)</strong> 響起。</li>
-                <li>當實際速度 > 允許速度 + 5 km/h：<strong>常用煞車 (SB)</strong> 自動介入直到速度低於限速。</li>
-            </ul>
-        </li>
-        <li><strong>緊急停止：</strong> 若列車越過紅燈 (EOA, End of Authority)，ATP 將觸發緊急煞車 (EB) 直至列車完全停止。</li>
-    </ul>
 
     <div class="footer">Page 10</div>
 </div>
 
+<!-- 第十二頁：第四章 故障排除指引 (1) -->
 <div class="page">
-    <h4>2.4.2 CBTC (通訊式列車控制)</h4>
-    <p>透過無線電 (WLAN) 即時與地面設備通訊，實現移動閉塞 (Moving Block)。</p>
-    <ul>
-        <li><strong>MA (移動授權)：</strong> 駕駛台儀表上的「MA Bar (綠色條)」顯示前方可通行距離。若 MA 歸零，列車不得移動。</li>
-        <li><strong>ATO (自動列車駕駛)：</strong> (選配功能) 若啟用 ATO，司機員僅需監控，列車將自動加速與減速。</li>
-    </ul>
+    <h2>第四章 系統全面故障排除指引</h2>
+    
+    <h3>4.1 故障處置原則與常見故障速查表</h3>
+    <p>遇車輛突發系統異常時，請遵循「看（觀察代碼）→ 查（速查指引）→ 試（安全重置）」三原則[cite: 1]，嘗試透過實體復位鈕或後方 NFB 配電盤進行重置。若故障嚴重且阻礙行車，在獲得調度員授權後，依序啟用對應的隔離旁路 (Bypass) 旋鈕[cite: 1]。</p>
 
-    <h4>2.4.3 TASC (定點停車輔助)</h4>
-    <p>協助司機員將列車精準停靠於月台門位置。</p>
-    <ul>
-        <li><strong>作動時機：</strong> 進站前約 300 公尺偵測到 TASC 地面感應器。</li>
-        <li><strong>操作：</strong> 司機員需將電門保持在 P 位或 N 位，TASC 燈亮起後，系統自動接管煞車將列車停準。</li>
-        <li><strong>停準確認：</strong> 停車後，儀表板顯示「TASC OK」綠燈，且誤差在 ±30cm 內，車門方可開啟。</li>
-    </ul>
+    <h4>常見故障簡易速查表（基礎整備對照）</h4>
+    <table>
+        <thead>
+            <tr><th width="20%">故障現象</th><th width="30%">可能原因</th><th>手冊原始基本處置方式</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>無法升弓</strong></td>
+                <td>1. 總風缸氣壓不足<br>2. 鑰匙未推至 ON</td>
+                <td>1. 啟動輔助空氣壓縮機 (ACM/補助風泵) 打氣至標準壓[cite: 1]。<br>2. 拔出重新插入確認主控電門鑰匙位置[cite: 1]。</td>
+            </tr>
+            <tr>
+                <td><strong>VCB 無法閉合</strong></td>
+                <td>1. 列車恰位於中性區間<br>2. 偵測到實體短路跳脫</td>
+                <td>1. 確認網壓表是否有電，滑離無電中性區[cite: 1]。<br>2. 長按主控台 VCB Reset 鈕或點動抗擾開關 TCMSRS 3秒後重試[cite: 1]。</td>
+            </tr>
+            <tr>
+                <td><strong>ATP 緊軔不鬆</strong></td>
+                <td>1. 系統超速曲線感應防護<br>2. 車載防護電腦硬體故障</td>
+                <td>1. 確認列車完全靜止速度為 0，按壓紅色 ATP ACK/確認鈕[cite: 1]。<br>2. 若無效，通報調度獲令後切換至隔離 (Bypass) 模式限速行駛[cite: 1]。</td>
+            </tr>
+            <tr>
+                <td><strong>車門無法關閉</strong></td>
+                <td>1. 門軌月台夾入大件行李<br>2. 門機微動極限開關故障</td>
+                <td>1. 重新按壓 Re-open 再關閉清除導軌夾物[cite: 1]。<br>2. 使用車外實體車門隔離鎖或車門旁路旋鈕強制隔離[cite: 1]。</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>4.2 升弓與高壓送電跳脫故障排除</h3>
+    <h4>4.2.1 狀況一：操作「Pan UP」後升弓燈不亮，集電弓完全無動作</h4>
+    <div class="trouble-step">
+        <p><strong>精細排除程序：** 檢查儀表低壓電瓶電壓錶。若電壓高於 90V 且雙針上錶 MR 顯示低於 5.5 bar，判定為純屬總風缸氣壓不足，無氣壓頂起集電弓[cite: 1]。走向後方配電盤檢查下排 **「主風泵控制(CMCN)」** 與 **「主風泵調壓器(CMGN)」** NFB 確實在 ON 位。轉動控制台開關，強制點動開啟 **「補助風泵(ACMLp)」**，頂部七燈組之補助風泵黃燈點亮，車底輔助壓風機開始補氣。靜待 3-5 分鐘，小氣壓表達到 6.0 bar 以上且黃燈自動熄滅後，重新將集電弓開關推至 UP[cite: 1]。若仍無反應，點檢配電盤上排 **「VCB/PAN 控制(MCN1)」** 開關，若跳脫則推回 OFF 再重新用力推至 ON 位復歸[cite: 1]。</p>
+    </div>
+    <h4>4.2.2 狀況二：升弓成功但操作「VCB CLOSE」後真空斷路器瞬間跳開，全車無法通高壓電</h4>
+    <div class="trouble-step">
+        <p><strong>精細排除程序：** 目視主儀表「電車線電壓檢測(LVLp)」黃燈[cite: 1]。若燈滅且網壓計為 0V，確認列車是否因惰行停於無電之中性區間內[cite: 1]。若是，推逆轉機前進，利用坡度或殘餘氣壓滑離該中性區號誌牌後重新閉合[cite: 1]。若網壓 AC 25kV 正常，但一閉合即發生強行跳脫，司機員應按壓頂部面板 **「TCMS 復位開關(TCMSRS)」** 黑色按鈕或長按 VCB Reset 鈕清除電腦暫態錯誤[cite: 1]。重置後再次嘗試閉合。若連續閉合 2 次均瞬間強行跳開，判定車頂高壓電路有永久性實體短路或接地故障，**嚴禁進行第 3 次強行閉合**，立即將後方配電盤 MCN1 開關隔離，通報申請調車救援[cite: 1]。</p>
+    </div>
 
     <div class="footer">Page 11</div>
 </div>
 
+<!-- 第十三頁：第四章 故障排除指引 (2) -->
 <div class="page">
-    <h3>2.5 電力與輔助設備</h3>
+    <h3>4.3 總故障燈 (GFLp) 亮起與車門連鎖故障排除</h3>
+    <h4>4.3.1 狀況一：行駛中或站內主儀表「總故障（GFLp）紅燈」突然暴亮</h4>
+    <div class="trouble-step">
+        <p><strong>精細排除程序：** 司機員保持冷靜，維持正常號誌防護行駛。將目光移至右側 TCMS 觸控螢幕點擊進入「異常一覽」子分頁，查閱當前紅字或黃字異常事件代碼與受影響車廂[cite: 1]。若屬非致命性輕微異常（如單一車廂資訊系統電源切開、冷氣停機），點擊 TCMS 螢幕上的「故障清除/復歸」進行線上軟體重置。若屬低壓電路跳開，進站停妥後走向椅後配電櫃，核對對應的無熔絲斷路器（如 NFB-201 PISC主電源），跳脫則復歸一次[cite: 1]。若復歸後開關再度跳至中間，嚴禁強行固定，維持其隔離狀態，登載於日誌報修[cite: 1]。</p>
+    </div>
+    <h4>4.3.2 狀況二：按下「CLOSE」關門按鈕後，「STILp 綠燈（車門連鎖）」熄滅不亮，列車鎖死無法動車</h4>
+    <div class="trouble-step">
+        <p><strong>精細排除程序：** 立即按下右側車門控制盒之 **「再開門按鈕 (RE-OPEN)」** 將全車車門重新開啟[cite: 1]，廣播宣導防夾後重新按下 CLOSE 執行關門[cite: 1]。若連鎖綠燈依舊熄滅，檢查兩側車外側燈或點閱 TCMS 車門圖表，鎖定是哪一節車廂哪一扇門未完全死鎖[cite: 1]。通報列車長前往清除導軌夾物。若經實體點檢確認該門已物理完全關緊，但因極限微動開關故障產生訊號誤報，在確認無夾人安全疑慮後，解開旁路開關盤玻璃罩，將下排 **「自動門連鎖隔離開關(DIRS)」** 旋鈕由正常切換至 **「隔離」** 位。DIRS 旁路後，STILp連鎖迴路將被強制導通，重新操作電門即可起步發車。*(註：若屬伸縮腳踏板卡滯未收回，可先將下排「全列車腳踏板強制縮回(STACS)」切至縮回位；無效則將「腳踏板連鎖隔離開關(STIRS)」切至隔離位旁路安全訊號。)*</p>
+    </div>
 
-    <h4>2.5.1 低壓配電盤與保險絲 (NFB)</h4>
-    <p>當特定設備無法運作時，司機員需檢查位於駕駛室後方之低壓配電盤。</p>
-    
-    <ul>
-        <li><strong>位置：</strong> 駕駛室座椅正後方牆櫃 (需使用三角鑰匙開啟)。</li>
-        <li><strong>主要 NFB (無熔絲開關) 列表：</strong></li>
-    </ul>
-
-    <table style="width: 90%; margin: 0 auto;">
-        <tr><th>編號</th><th>名稱</th><th>控制設備</th></tr>
-        <tr><td>NFB-101</td><td>HEAD LIGHT</td><td>頭燈控制電源</td></tr>
-        <tr><td>NFB-102</td><td>WIPER</td><td>雨刷馬達</td></tr>
-        <tr><td>NFB-201</td><td>PISC MAIN</td><td>旅客資訊系統主機</td></tr>
-        <tr><td>NFB-203</td><td>ATC/ATP</td><td>保安裝置電源 (嚴禁任意切斷)</td></tr>
-        <tr><td>NFB-301</td><td>DOOR CTRL</td><td>車門控制迴路</td></tr>
-        <tr><td>NFB-401</td><td>HMI/DMI</td><td>駕駛儀表螢幕</td></tr>
-    </table>
-
-    <div class="warning-box">
-        <strong>注意：</strong> 若 NFB 跳脫 (跳至中間位置)，可嘗試復歸一次。若再次跳脫，代表線路短路，<strong>嚴禁強行固定</strong>，應隔離該設備並報修。
+    <h3>4.4 動力牽引不足與無法動車排除</h3>
+    <h4>4.4.1 狀況一：方向手柄推至前進，主控制器拉至 P4 位，列車出力為 0，時速不升</h4>
+    <div class="trouble-step">
+        <p><strong>精細排除程序：** 首先確認頂部指示燈「STILp 綠燈」是否長亮[cite: 1]。若滅，依照 4.3.2 節程序排除車門安全連鎖故障[cite: 1]。檢視七燈組之「停留軔機（PBLp）紅燈」是否亮著。若亮，重按實體「停留軔機鬆軔（PBS1）」綠色按鈕[cite: 1]。若仍不滅，觀察雙針壓力表上的 BC 煞車缸壓力。若發現 BC 表殘留風壓（約 0.3-0.5 bar 以上）導致零速煞車或保持軔機未徹底解鎖，司機員應打開隔離盤玻璃，將下排 **「暫停軔機開關 (HBCOS)」** 故障隔離旋鈕切換至隔離位，強行解除保持軔。若煞車風壓確已歸零、PBLp 滅但拉電門依然無牽引出力，點閱 TCMS 畫面確認馬達控制器狀態。若開關皆正常，將隔離盤上排 **「牽引力控制模式 (EMOS)」** 旋鈕由預設的「速控」切換至 **「牽引力」** 模式。系統將繞過定速電腦複雜演算，改由司機員以手把位階直接手動控制出力百分比，通常可即刻恢復牽引動力起步。</p>
     </div>
 
     <div class="footer">Page 12</div>
 </div>
 
+<!-- 第十四頁：第四章 故障排除指引 (3) -->
 <div class="page">
-    <h1>第三章 標準操作程序 (SOP)</h1>
-    
-    <h3>3.1 始業檢查 (Pre-Departure Check)</h3>
-    <p>本程序於每日出庫前執行，確保列車各系統功能正常。</p>
-
-    <h4>A. 駕駛室靜態檢查</h4>
-    <div class="checklist">
-        <div class="cl-row"><span class="cl-item">1. 電瓶電壓 (Battery Volt)</span><span class="cl-check">確認 > 90V (低壓表)</span></div>
-        <div class="cl-row"><span class="cl-item">2. NFB 配電盤</span><span class="cl-check">確認全數投入 (ON)</span></div>
-        <div class="cl-row"><span class="cl-item">3. 手軔車 (Parking Brake)</span><span class="cl-check">確認施軔 (紅燈亮)</span></div>
-        <div class="cl-row"><span class="cl-item">4. 駕駛台開關位置</span><span class="cl-check">全數歸零 / OFF 位</span></div>
-        <div class="cl-row"><span class="cl-item">5. 滅火器/擊破器</span><span class="cl-check">確認在位且壓力正常</span></div>
+    <h3>4.5 軔機鎖死、氣壓異常與停留軔機不鬆排除</h3>
+    <h4>4.5.1 狀況一：手柄已在緩解位，但全車煞車缸（BC）壓力卡死高位不降，列車被迫鎖死</h4>
+    <div class="trouble-step">
+        <p><strong>精細排除程序：** 核對雙針壓力表。若總風缸 MR 壓力在正常 7.5 - 8.5 bar 之間，但煞車缸 BC 壓力卻卡在 2.0 - 4.5 bar 之間無法歸零，判定空氣煞車控制單元 (BCU) 軟硬體或防滑閥當機閉鎖[cite: 1]。立即走向控制台右上方，掀開專用安全透明保護罩，果斷按下 **「強制隔離不鬆軔 (ARS)」** 重置保護按鈕。ARS 按下後，控制電路會越權向全車各制動單元發送強行鬆軔訊號，跳過原先 BCU 的錯誤鎖定指令，風壓即會線性排出歸零。若發車咬死是導因於手煞車停留軔機因感應器壞掉誤報未緩解，導致電腦截斷牽引力，司機員應打開隔離盤玻璃將上排 **「停留軔機連鎖開關 (PARS)」** 旋鈕由正常位切至隔離位，電腦將忽略該聯鎖保護限制，允許車輛動車巡航。</p>
     </div>
 
-    <h4>B. 設備功能測試 (低壓)</h4>
-    <div class="checklist">
-        <div class="cl-row"><span class="cl-item">1. 司機員鑰匙</span><span class="cl-check">插入 -> ON</span></div>
-        <div class="cl-row"><span class="cl-item">2. 燈光測試</span><span class="cl-check">頭燈(遠/近)、尾燈、儀表燈 正常</span></div>
-        <div class="cl-row"><span class="cl-item">3. 雨刷測試</span><span class="cl-check">噴水、間歇、高低速作動正常</span></div>
-        <div class="cl-row"><span class="cl-item">4. 鳴笛測試</span><span class="cl-check">電笛(輕踩)、氣笛(重踩) 響聲正常</span></div>
-        <div class="cl-row"><span class="cl-item">5. 廣播測試</span><span class="cl-check">執行 PISC 廣播測試，車內外喇叭正常</span></div>
+    <h3>4.6 保安裝置 (ATP) 異常緊軔與警醒裝置故障排除</h3>
+    <h4>4.6.1 狀況一：正線行駛中號誌正常且無超速，ATP 系統卻突然發出尖銳蜂鳴並引發強制緊軔 (EB) 煞停</h4>
+    <div class="trouble-step">
+        <p><strong>精細排除程序：** 嚴禁在列車未完全停穩前操作任何開關。維持手柄在煞車位，靜待列車時速降至 0 km/h 絕對靜止狀態[cite: 1]。完全停妥後，連續按壓中央控制區紅色 **「ATP確認 ACK 按鈕」** 2-3 次進行應答消音[cite: 1]。若暫態錯誤消失且釋放安全 MA 曲線，即可重新推電門發車。若 DMI 螢幕黑畫面或全面卡死，前往後方低壓配電櫃，將 **「NFB-203 (ATC/ATP)」** 安全開關扳至 OFF[cite: 1]，靜待 10 秒後重新推回 ON（執行主機硬體冷重啟）[cite: 1]。若主機損壞永久性排空列車管 BP 氣壓，立即以無線電向運轉調度員回報。獲得調度命令與授權密碼後，手動操作車載 ATP 隔離鎖，將 ATP 完全隔離 (Bypass)[cite: 1]。隨後將控制台旁行車號誌切換至 **限制手動 (RM) 模式**[cite: 1]，嚴格依據限制時速 **不超過 25 km/h** 安全蠕行至最近車站，安排旅客換乘[cite: 1]。</p>
+    </div>
+    <h4>4.6.2 狀況二：開車行駛中，正常踩踏腳下警醒踏板，但警醒裝置 (Deadman) 隨即發出連續警告音並即將在 3 秒後引發緊急煞車[cite: 1]</h4>
+    <div class="trouble-step">
+        <p><strong>精細排除程序：** 當警告音響起時，右手立刻伸出按壓中央控制台上的實體 **「面板警惕按鈕 (Panel Button)」** 以代替腳踏板應答[cite: 1]，暫時阻止緊急煞車觸發。持續按壓維持行車，待列車進站月台停妥且煞車施加建立氣壓後，執行就地障礙排除。打開控制台下方隔離旋鈕面板玻璃，定位至上排第三個旋鈕 **「警醒裝置隔離開關 (VCOS)」**，將其由「正常」位置切換至 **「隔離」** 位置[cite: 1]。切換完成後全車失能防護安全電路旁路，警報音消除。*警告：VCOS 隔離後，列車失去防範司機昏迷之安全機制[cite: 1]。司機員必須立刻通知列車長進駐駕駛室執行「雙人乘務」共同監視路況，直至運轉結束進段維修[cite: 1]。*</p>
     </div>
 
-    <div class="footer">Page 13</div>
-</div>
-
-<div class="page">
-    <h4>C. 車外巡視檢查 (Exterior Walk-around)</h4>
-    <p>司機員須下車繞行列車一週進行目視檢查。</p>
-
-    <div class="checklist">
-        <div class="cl-row"><span class="cl-item">1. 車體外觀</span><span class="cl-check">無外傷、塗鴉、外板脫落</span></div>
-        <div class="cl-row"><span class="cl-item">2. 轉向架/避震器</span><span class="cl-check">無漏油、無異物卡滯</span></div>
-        <div class="cl-row"><span class="cl-item">3. 連結器 (Coupler)</span><span class="cl-check">電氣接頭清潔、氣管無洩漏</span></div>
-        <div class="cl-row"><span class="cl-item">4. 車下設備箱</span><span class="cl-check">箱門鎖緊、無燒焦異味</span></div>
-        <div class="cl-row"><span class="cl-item">5. 集電弓 (Pan)</span><span class="cl-check">碳刷磨耗正常、無纏繞異物</span></div>
-    </div>
-
-    <div class="warning-box">
-        <strong>特別注意：</strong> 檢查集電弓時，務必確認集電弓處於降弓狀態，且人員與帶電部分保持 1.5 公尺以上安全距離。
-    </div>
-
-    <div class="footer">Page 14</div>
-</div>
-
-<div class="page">
-    <h3>3.2 系統啟動與 PISC 設定</h3>
-
-    <h4>A. 高壓送電 (Energizing)</h4>
-    <div class="checklist">
-        <div class="cl-row"><span class="cl-item">1. 集電弓開關 (Pan)</span><span class="cl-check">操作 [UP]，確認升弓燈亮</span></div>
-        <div class="cl-row"><span class="cl-item">2. 線電壓 (Line Volts)</span><span class="cl-check">確認檢出 25kV (儀表顯示)</span></div>
-        <div class="cl-row"><span class="cl-item">3. VCB 開關</span><span class="cl-check">操作 [CLOSE]，聽見閉合聲</span></div>
-        <div class="cl-row"><span class="cl-item">4. 輔助電源 (SIV)</span><span class="cl-check">確認 SIV 指示燈亮 (綠燈)</span></div>
-        <div class="cl-row"><span class="cl-item">5. 空壓機 (CMP)</span><span class="cl-check">自動啟動充氣，至 8.5 bar 停止</span></div>
-    </div>
-
-    <h4>B. 資訊系統設定</h4>
-    <ol>
-        <li>於 PISC 觸控螢幕登入司機員 ID。</li>
-        <li>輸入本日車次號 (Train ID)。</li>
-        <li>確認起訖站與停靠模式 (每站停/直達)。</li>
-        <li>設定空調溫度 (標準 24°C)。</li>
-        <li>確認 TCMS 顯示全車設備「綠色 (正常)」。</li>
-    </ol>
-
-    <div class="footer">Page 15</div>
-</div>
-
-<div class="page">
-    <h3>3.3 軔機與保安裝置測試</h3>
-    <p><strong>(Brake & ATP Function Test)</strong></p>
-
-    <h4>A. 軔機貫通試驗</h4>
-    <div class="checklist">
-        <div class="cl-row"><span class="cl-item">1. 電門 -> SERVICE</span><span class="cl-check">BC 壓力上升，BP 壓力下降</span></div>
-        <div class="cl-row"><span class="cl-item">2. 電門 -> EMG</span><span class="cl-check">BC 最大壓 (4.5bar)，BP 排至 0</span></div>
-        <div class="cl-row"><span class="cl-item">3. 電門 -> RELEASE</span><span class="cl-check">BC 歸零，BP 回充至 5.0bar</span></div>
-        <div class="cl-row"><span class="cl-item">4. 手軔車 (Parking)</span><span class="cl-check">操作 緩解/施軔 各一次，確認燈號</span></div>
-    </div>
-
-    <h4>B. ATP 功能自趨 (Self-Test)</h4>
-    <p>開啟 ATP 電源後，系統會自動執行自我診斷。</p>
-    <ul>
-        <li>觀察 DMI 螢幕，確認無故障代碼 (Error Code)。</li>
-        <li>確認 ATP 模式顯示為 <strong>STBY (待機)</strong> 或 <strong>MCS</strong>。</li>
-        <li>測試「警惕裝置」：按下警惕鈕，確認警報音消失。</li>
-    </ul>
-
-    <div class="footer">Page 16</div>
-</div>
-
-<div class="page">
-    <h3>3.4 出庫與正線行駛</h3>
-
-    <h4>A. 發車前確認 (Departure Check)</h4>
-    <div class="checklist">
-        <div class="cl-row"><span class="cl-item">1. 車門狀態</span><span class="cl-check">全關 (All Closed) 燈亮</span></div>
-        <div class="cl-row"><span class="cl-item">2. 氣壓狀態</span><span class="cl-check">MR > 7.0 bar / BP 5.0 bar</span></div>
-        <div class="cl-row"><span class="cl-item">3. 逆轉機</span><span class="cl-check">FWD (前進位)</span></div>
-        <div class="cl-row"><span class="cl-item">4. 手軔車</span><span class="cl-check">緩解 (RELEASE) 燈滅</span></div>
-        <div class="cl-row"><span class="cl-item">5. 移動授權 (MA)</span><span class="cl-check">確認 DMI 顯示可行駛距離</span></div>
-        <div class="cl-row"><span class="cl-item">6. 指差確認</span><span class="cl-check">呼喚「出發號誌，綠燈/進行！」</span></div>
-    </div>
-
-    <h4>B. 行駛操作要領</h4>
-    <ul>
-        <li><strong>起步：</strong> 將電門推至 P2 或 P3，列車移動後再視情況增加至 P4。</li>
-        <li><strong>定速：</strong> 達到目標速度後，將電門拉回 N (惰行) 或維持低檔位。</li>
-        <li><strong>減速：</strong> 進站前預先將電門推至 B1~B3 建立煞車力，避免急煞。</li>
-        <li><strong>停站：</strong> 配合 TASC 系統，將車輛準確停於停止線 ±30cm 處。</li>
-    </ul>
-
-    <div class="footer">Page 17</div>
-</div>
-
-<div class="page">
-    <h3>3.5 洗車與調車作業</h3>
-
-    <h4>A. 洗車程序 (Washing Mode)</h4>
-    <p>進入自動洗車機前之操作：</p>
-    <ol>
-        <li>確認所有車門、車窗緊閉。</li>
-        <li>關閉雨刷 (置於 OFF 位)。</li>
-        <li>於 TCMS 空調頁面點選 <strong>[洗車模式]</strong> (此動作將關閉外氣風門，防止藥水吸入)。</li>
-        <li>將 ATP 切換至 <strong>RM 模式</strong>。</li>
-        <li>維持 3~5 km/h 恆速通過洗車機。</li>
-    </ol>
-
-    <h4>B. 調車程序 (Shunting)</h4>
-    <p>於機務段內進行車輛移動：</p>
-    <ul>
-        <li><strong>速限：</strong> 機廠內速限 25 km/h；進入維修坑道速限 5 km/h。</li>
-        <li><strong>喚呼應答：</strong> 確實覆誦調車員之無線電指令。</li>
-        <li><strong>燈光：</strong> 開啟雙邊尾燈 (若有規定) 或頭燈近光。</li>
-    </ul>
-
-    <div class="footer">Page 18</div>
-</div>
-
-<div class="page">
-    <h3>3.6 收班與斷電程序 (Shutdown)</h3>
-    <p>當日運轉結束，列車返回停放股道後執行。</p>
-
-    <div class="checklist">
-        <div class="cl-row"><span class="cl-item">1. 停車定位</span><span class="cl-check">確認停於規定位置 (止衝檔前)</span></div>
-        <div class="cl-row"><span class="cl-item">2. 手軔車</span><span class="cl-check">施軔 (SET) 紅燈亮</span></div>
-        <div class="cl-row"><span class="cl-item">3. PISC 關機</span><span class="cl-check">執行登出並關閉系統</span></div>
-        <div class="cl-row"><span class="cl-item">4. 燈光/空調</span><span class="cl-check">全數關閉</span></div>
-        <div class="cl-row"><span class="cl-item">5. VCB 切斷</span><span class="cl-check">操作 [OPEN]</span></div>
-        <div class="cl-row"><span class="cl-item">6. 降弓</span><span class="cl-check">操作 [DOWN] 確認降弓燈亮</span></div>
-        <div class="cl-row"><span class="cl-item">7. 司機員鑰匙</span><span class="cl-check">轉至 OFF 並拔取</span></div>
-        <div class="cl-row"><span class="cl-item">8. 電瓶開關 (Bat)</span><span class="cl-check">切斷 (OFF)</span></div>
-        <div class="cl-row"><span class="cl-item">9. 排水 (Drain)</span><span class="cl-check">執行 MR 儲氣槽排水 (車外)</span></div>
-    </div>
-
-    <div class="footer">Page 19</div>
-</div>
-
-<div class="page">
-    <h1>第四章 簡易故障排除</h1>
-    
-    <h3>4.1 故障處置原則</h3>
-    <p>遇故障時，請遵循「RESET (重置)」原則：</p>
-    <ol>
-        <li>確認故障訊息代碼 (TCMS Event Code)。</li>
-        <li>參閱故障排除手冊 (Troubleshooting Guide)。</li>
-        <li>若無立即危險，嘗試重置相關 NFB 或 VCB。</li>
-    </ol>
-
-    <h3>4.2 常見故障速查</h3>
-    <table style="font-size: 9pt;">
-        <tr><th width="20%">故障現象</th><th width="30%">可能原因</th><th>處置方式</th></tr>
-        <tr>
-            <td><strong>無法升弓</strong></td>
-            <td>1. 氣壓不足<br>2. 鑰匙未 ON</td>
-            <td>1. 啟動輔助空壓機 (ACM) 打氣。<br>2. 確認司機員鑰匙位置。</td>
-        </tr>
-        <tr>
-            <td><strong>VCB 無法閉合</strong></td>
-            <td>1. 位於中性區間<br>2. 偵測到短路</td>
-            <td>1. 確認網壓表是否有電。<br>2. 長按 VCB Reset 3秒後重試。</td>
-        </tr>
-        <tr>
-            <td><strong>ATP 緊軔不鬆</strong></td>
-            <td>1. 超速<br>2. 設備故障</td>
-            <td>1. 確認速度為 0，按壓 ATP Reset。<br>2. 若無效，切換至隔離 (Bypass) 模式並通報。</td>
-        </tr>
-        <tr>
-            <td><strong>車門無法關閉</strong></td>
-            <td>1. 異物夾入<br>2. 門機故障</td>
-            <td>1. 重按 Re-open 再關閉。<br>2. 使用車門隔離鎖 (Door Cut-out) 隔離該門。</td>
-        </tr>
-    </table>
-
-    <div class="footer">Page 20 (End)</div>
+    <div class="footer">Page 13 (End)</div>
 </div>
 
 </body>
