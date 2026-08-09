@@ -1385,6 +1385,7 @@
 
             // --- 【建立路線與比對 CSV 純粹發車時間】 ---
             let trainMatch = cutscene.trainMatch;
+            state.matchedTrain = trainMatch;
             state.route = [];
 
             for (let i = 0; i < raw.length; i++) {
@@ -1424,10 +1425,42 @@
             state.isATO = true; state.atoManualDisengaged = false; state.blueFlashTimer = 0; state.manualRequested = false;
             state.occTargetStationName = null; state.occTargetStation = null; state.occTargetStationIdx = -1;
 
+            let startStNameForCam = raw[0] ? raw[0].name : '';
+            let trainMatchForCam = cutscene.trainMatch;
+            let matchedPForCam = (trainMatchForCam && trainMatchForCam.platforms) ? trainMatchForCam.platforms : {};
+
+            // 【架構修正】優先級疊加設定 camType，不再用互斥 if-else
+            // 層 1（預設）：依車種設定基礎鏡頭
             if (state.type === 'commuter_express') {
                 state.camType = (state.d <= 56250 && state.d > 26950) ? 'express' : 'local';
             } else {
                 state.camType = state.type;
+            }
+
+            // 層 2：下行且 FR12 停靠月台4 → 袋形軌鏡頭（適用任何起點）
+            if (cutscene.dir === 'down') {
+                let pFR12cam = String(matchedPForCam["飛灣公園"] || matchedPForCam["FR12"] || matchedPForCam["公園"] || "");
+                if (pFR12cam.includes("4")) {
+                    state.camType = 'fr11_fr12_pocket';
+                }
+            }
+
+            // 層 3：上行且起點為 FR12 (飛灣公園) → 依據月台判斷(=3)使用快速列車鏡頭出站或正常普通車月台出站
+            if (cutscene.dir === 'up' && (startStNameForCam.includes("FR12") || startStNameForCam.includes("公園"))) {
+                let pFR12cam = String(matchedPForCam["飛灣公園"] || matchedPForCam["FR12"] || matchedPForCam["公園"] || "");
+                if (pFR12cam.includes("3")) {
+                    state.camType = 'express';
+                } else {
+                    state.camType = 'local';
+                }
+            }
+
+            // 層 4（最高優先）：起點為 FR01 且停靠月台4 → FR01月台4鏡頭（覆蓋一切）
+            if (startStNameForCam.includes("FR01") || startStNameForCam.includes("工業區")) {
+                let pFR01cam = String(matchedPForCam["飛灣工業區"] || matchedPForCam["FR01"] || matchedPForCam["工業區"] || "");
+                if (pFR01cam.includes("4")) {
+                    state.camType = 'local_fr01_p4';
+                }
             }
 
             let initialGap = (state.type === 'express') ? 1800 : (state.type === 'commuter_express' ? 1500 : 1200);
@@ -1798,8 +1831,8 @@
                 buildDoubleTrack(pts, false, 0.02);
             }
             buildCrossover(300, -2, 380, 2); buildCrossover(300, 2, 380, -2);
-            buildCrossover(57720, -2, 57800, 2); buildCrossover(57720, 2, 57800, -2);
-            buildCrossover(59400, -2, 59480, 2); buildCrossover(59400, 2, 59480, -2);
+            buildCrossover(57720, -2, 57800, 2); buildCrossover(57720, 2, 57800, -2);  // FR21 綾路北站橫渡線
+            buildCrossover(59400, -2, 59480, 2); buildCrossover(59400, 2, 59480, -2);  // FR22 全京大道橫渡線
             buildCrossover(27750, -4.2, 27850, 0); buildCrossover(27750, 4.2, 27850, 0);
             buildCrossover(28050, 0, 28150, -4.2); buildCrossover(28050, 0, 28150, 4.2);
 
@@ -1862,6 +1895,7 @@
                 group.position.set(p.x, p.y + 0.6, p.z); group.rotation.y = -p.a;
                 let px = st.name.includes("FR12") ? 7.8 : 5.6;
                 if (st.type === "side" || st.type === "double_island" || st.type === "double_island_end") {
+                    // 雙島式月台或側式月台：統一使用 geoSide (寬度 4.2)，並套用動態 px 偏移，以免碰撞停車標及列車
                     const p1 = new THREE.Mesh(geoSide, platMat); p1.position.x = -px;
                     const p2 = new THREE.Mesh(geoSide, platMat); p2.position.x = px;
                     group.add(p1, p2);
@@ -1904,8 +1938,83 @@
                     type = (d <= 26900 || d > 56250) ? 'local' : 'express';
                 }
             }
-            // 1. 終點橫渡線 (FR01, 0-450m)
-            if (d < 450) {
+
+            // 鏡頭 1: FR01 月台4出站路徑 (local_fr01_p4)
+            if (type === 'local_fr01_p4') {
+                // FR01 月台4 (-9.2m)，下行分兩段橫渡線切入下行正線：
+                //   第一段 d=100~250：-9.2m → -2m（月台4外軌並軌左正線）
+                //   第二段 d=300~380：-2m → +2m（X橫渡線，與普通車相同）
+                // 上行：d=250~100 從左正線 -2m 切入月台4 -9.2m
+                if (d < 450) {
+                    if (dir === 'down') {
+                        if (d < 100) return -9.2;                          // 月台4本線
+                        if (d <= 250) { let t = (d - 100) / 150; return -9.2 + 7.2 * easeInOut(t); }  // 第一橫渡線
+                        if (d < 300) return -2;                           // 左正線過渡段
+                        if (d <= 380) { let t = (d - 300) / 80; return -2 + 4 * easeInOut(t); }       // X橫渡線
+                        return 2;                                          // 下行正線
+                    } else {
+                        if (d <= 100) return -9.2;                         // 月台4本線
+                        if (d <= 250) { let t = (d - 100) / 150; return -9.2 + 7.2 * easeInOut(t); }  // 橫渡線
+                        return -2;                                         // 上行正線
+                    }
+                }
+                // d >= 450：走普通車路徑
+                let { L_in, R_in, L_out, R_out } = getBaseOffsets(d);
+                if (dir === 'down') { return R_out !== null ? R_out : R_in; }
+                else { return L_out !== null ? L_out : L_in; }
+            }
+
+            // 新增鏡頭 2: FR11~FR12 經過中間袋形軌到 FR12 第四月台側線 (fr11_fr12_pocket)
+            if (type === 'fr11_fr12_pocket') {
+                if (d >= 26900 && d <= 28800) {
+                    if (dir === 'down') {
+                        // 1. FR11 站內至袋形軌前 (d <= 27750)：跟隨下行正線軌道偏移量 R_in (包含 FR11 島式月台彎道及後續正線)
+                        if (d <= 27750) {
+                            let { R_in } = getBaseOffsets(d);
+                            return R_in;
+                        }
+                        // 2. 轉入中間袋形軌 (d=27750~27850)：由下行正線 (+4.2m) 切入袋形軌 (0m)
+                        if (d > 27750 && d < 27850) {
+                            let t = (d - 27750) / 100;
+                            let { R_in } = getBaseOffsets(d);
+                            return R_in * (1 - easeInOut(t));
+                        }
+                        // 3. 袋形軌直線段 (d=27850~28050)：維持在袋形軌中心 (0m)
+                        if (d >= 27850 && d <= 28050) {
+                            return 0;
+                        }
+                        // 4. 駛出袋形軌 (d=28050~28150)：由袋形軌 (0m) 切至左側正線/側線 (L_in = -4.2m)
+                        if (d > 28050 && d < 28150) {
+                            let t = (d - 28050) / 100;
+                            let { L_in } = getBaseOffsets(d);
+                            return L_in * easeInOut(t);
+                        }
+                        // 5. FR12 側線及月台區 (d >= 28150)：跟隨 getBaseOffsets 的 L_out (-11.4m)，涵蓋整個 FR12 第四月台 (28420m~28580m)
+                        if (d >= 28150) {
+                            let { L_in, L_out } = getBaseOffsets(d);
+                            return L_out !== null ? L_out : L_in;
+                        }
+                    }
+                }
+                // 區間外退回普通車路徑（與 local 型別完全一致）
+                // FR01 端點橫渡線（d < 450）：必須與 local 行為相同，不能用 getBaseOffsets
+                if (d < 450) {
+                    if (dir === 'down') {
+                        if (d < 300) return -2;
+                        if (d > 380) return 2;
+                        let t = (d - 300) / 80;
+                        return -2 + 4 * easeInOut(t);
+                    } else {
+                        return -2; // 上行在 FR01 端：左正線
+                    }
+                }
+                let { L_in, R_in, L_out, R_out } = getBaseOffsets(d);
+                if (dir === 'down') { return R_out !== null ? R_out : R_in; }
+                else { return L_out !== null ? L_out : L_in; }
+            }
+
+            // 1. 終點橫渡線 (FR01, 0-450m)（非月台 4 專屬路徑時的預設判斷）
+            if (d < 450 && type !== 'local_fr01_p4') {
                 if (dir === 'down') {
                     if (type === 'local') {
                         if (d < 300) return -2;
@@ -1942,8 +2051,6 @@
                 let outerOff = 0;
                 if (d <= 57800) {
                     let w = easeInOut((d - 57650) / 150); outerOff = 2 + 7.2 * w;
-                } else if (d <= 57980) {
-                    outerOff = 9.2;
                 } else if (d <= 58230) {
                     let w = easeInOut((d - 57980) / 250); outerOff = 9.2 - 7.2 * w;
                 } else {
@@ -1954,9 +2061,10 @@
             }
 
             // 3. 一般路段
+            let isLocalType = (type === 'local' || type === 'local_fr01_p4' || type === 'fr11_fr12_pocket');
             let { L_in, R_in, L_out, R_out } = getBaseOffsets(d);
-            if (dir === 'down') { if (type === 'local' && R_out !== null) return R_out; return R_in; }
-            else { if (type === 'local' && L_out !== null) return L_out; return L_in; }
+            if (dir === 'down') { if (isLocalType && R_out !== null) return R_out; return R_in; }
+            else { if (isLocalType && L_out !== null) return L_out; return L_in; }
         }
 
 
@@ -1980,15 +2088,20 @@
             let trainNumRow = -1;
             let trainTypeRow = -1;
             let stationRows = [];
+            let platformRows = {};
 
             const metaNames = ['FileType', '時刻表', '上り', '下り', '運用番号', '列車名', '号数', '備考', '終着駅', '始發駅', '始劃駅', '列車番号', '列車種別', '始發駅作業', '終着駅作業'];
 
             for (let i = 0; i < lines.length; i++) {
                 let row = lines[i].split(',');
                 let name = row[0] ? row[0].trim() : '';
+                let subName = row[1] ? row[1].trim() : '';
                 if (name === '列車番号') trainNumRow = i;
                 else if (name === '列車種別') trainTypeRow = i;
-                else if (name && !metaNames.includes(name) && !name.includes('番線') && !name.includes('作業') && !name.includes('出區') && !name.includes('入區')) {
+                else if (subName.includes('番線') || name.includes('番線')) {
+                    let cleanStName = name.replace('番線', '').replace(/(着|発)$/, '').trim();
+                    platformRows[cleanStName] = i;
+                } else if (name && !metaNames.includes(name) && !name.includes('作業') && !name.includes('出區') && !name.includes('入區')) {
                     stationRows.push(i);
                 }
             }
@@ -2008,6 +2121,7 @@
                 let lastStation = '';
                 let firstTime = '';
                 let timetable = {}; // 存放該車次「每一站」的發車時間
+                let platforms = {}; // 存放該車次「每一站」的月台 (番線)
 
                 for (let rIdx of stationRows) {
                     let row = lines[rIdx].split(',').map(s => s.trim());
@@ -2025,6 +2139,14 @@
                             }
                             lastStation = cleanStName;
                             timetable[cleanStName] = timeVal; // 存入字典
+
+                            // 彈性匹配月台資料（支援 exact match 及 includes 比對）
+                            let targetPKey = Object.keys(platformRows).find(k => k === cleanStName || k.includes(cleanStName) || cleanStName.includes(k));
+                            if (targetPKey && platformRows[targetPKey] !== undefined) {
+                                let pRow = lines[platformRows[targetPKey]].split(',').map(s => s.trim());
+                                let pVal = pRow[col] ? pRow[col].trim() : '';
+                                if (pVal) platforms[cleanStName] = pVal;
+                            }
                         }
                     }
                 }
@@ -2035,7 +2157,8 @@
                     origin: firstStation,
                     dest: lastStation,
                     departureTime: firstTime,
-                    timetable: timetable // 打包帶出完整時刻表
+                    timetable: timetable, // 打包帶出完整時刻表
+                    platforms: platforms  // 打包帶出月台資料
                 });
             }
             return results;
@@ -2128,6 +2251,8 @@
                 ui.trainSearchMsg.style.color = 'var(--color-err)';
                 return;
             }
+
+            state.matchedTrain = match;
 
             let sIdx = findStationIndexByName(match.origin);
             let eIdx = findStationIndexByName(match.dest);
@@ -2250,23 +2375,54 @@
             }
 
             let startDist = raw[0].dist;
-            state.d = (state.dir === 'down') ? startDist + 77 : startDist - 77;
             state.active = true; state.v = 0; state.p = 0; state.b = 4;
             state.door = true; state.doorClosing = false; state.doorOpening = false;
             state.idx = (state.route.length > 1) ? 1 : 0; state.stops = 0; state.stationDeparted = false; state.atpLimit = 120;
             state.isATO = true; state.atoManualDisengaged = false; state.blueFlashTimer = 0; state.manualRequested = false;
             state.occTargetStationName = null; state.occTargetStation = null; state.occTargetStationIdx = -1;
+
+            let matchedP = (state.matchedTrain && state.matchedTrain.platforms) ? state.matchedTrain.platforms : {};
+            let pFR01_start = String(matchedP["飛灣工業區"] || matchedP["FR01"] || matchedP["工業區"] || "");
+            state.d = (state.dir === 'down') ? startDist + 77 : startDist - 77;
+            // 【架構修正】優先級疊加設定 camType，不再用互斥 if-else
+            let startStName = raw[0] ? raw[0].name : '';
+
+            // 層 1（預設）：依車種設定基礎鏡頭
             if (state.type === 'commuter_express') {
                 state.camType = (state.d <= 56250 && state.d > 26950) ? 'express' : 'local';
             } else {
                 state.camType = state.type;
             }
 
-            // 緊急狀況處理 (在路途中隨機挑選一個區間生成，選隨機時先抽是否有事故)
+            // 層 2：下行且 FR12 停靠月台4 → 袋形軌鏡頭（適用任何起點）
+            if (state.dir === 'down') {
+                let pFR12_start = String(matchedP["飛灣公園"] || matchedP["FR12"] || matchedP["公園"] || "");
+                if (pFR12_start.includes("4")) {
+                    state.camType = 'fr11_fr12_pocket';
+                }
+            }
+
+            // 層 3：上行且起點為 FR12 (飛灣公園) → 依據月台判斷(=3)使用快速列車鏡頭出站或正常普通車月台出站
+            if (state.dir === 'up' && (startStName.includes("FR12") || startStName.includes("公園"))) {
+                let pFR12_start = String(matchedP["飛灣公園"] || matchedP["FR12"] || matchedP["公園"] || "");
+                if (pFR12_start.includes("3")) {
+                    state.camType = 'express';
+                } else {
+                    state.camType = 'local';
+                }
+            }
+
+            // 層 4（最高優先）：起點為 FR01 且停靠月台4 → FR01月台4鏡頭（覆蓋一切）
+            if (startStName.includes("FR01") || startStName.includes("工業區")) {
+                let pFR01_start = String(matchedP["飛灣工業區"] || matchedP["FR01"] || matchedP["工業區"] || "");
+                if (pFR01_start.includes("4")) {
+                    state.camType = 'local_fr01_p4';
+                }
+            }
+
+            // 緊急狀況處理 (始終為隨機抽籤，機率為百分之一 0.01)
             state.emer = { enabled: false, triggered: false, cleared: false, targetIdx: -1, triggerDist: 0, reactionTimer: 0, occTimer: 0, communicating: false, ebRequiredReset: false };
-            let hasEmer = false;
-            if (emerOpt === 'always') hasEmer = true;
-            else if (emerOpt === 'random') hasEmer = (Math.random() < 0.5); // 隨機時先抽是否有事故
+            let hasEmer = (Math.random() < 0.01);
 
             if (hasEmer && state.route.length >= 2) {
                 state.emer.enabled = true;
@@ -2701,12 +2857,28 @@
 
         function stepGame(now) {
             // 通勤快速鏡頭無縫切換：離開自然保育中心(56250m)往綾路北站切換為普通鏡頭，反之進入自然保育中心切換為快速鏡頭
-            if (state.active && state.type === 'commuter_express') {
+            if (state.active && state.type === 'commuter_express' && state.camType !== 'local_fr01_p4' && state.camType !== 'fr11_fr12_pocket') {
                 if (state.d > 56250) {
                     state.camType = 'local';
                 } else if (state.d > 26950) {
-                    state.camType = 'express';
+                    let startStName = (state.route && state.route[0]) ? state.route[0].name : '';
+                    if (state.dir === 'up' && (startStName.includes("FR12") || startStName.includes("公園")) && state.d > 28200) {
+                        let matchedP = (state.matchedTrain && state.matchedTrain.platforms) ? state.matchedTrain.platforms : {};
+                        let pFR12 = String(matchedP["飛灣公園"] || matchedP["FR12"] || matchedP["公園"] || "");
+                        if (!pFR12.includes("3")) {
+                            state.camType = 'local';
+                        } else {
+                            state.camType = 'express';
+                        }
+                    } else {
+                        state.camType = 'express';
+                    }
                 }
+            }
+
+            // 上行從 FR12 第三月台出發的普通車，行駛至飛灣大道 (d <= 26950) 時切回普通車鏡頭 (local)
+            if (state.active && state.type === 'local' && state.dir === 'up' && state.camType === 'express' && state.d <= 26950) {
+                state.camType = 'local';
             }
 
             // --- 遊戲動態時間推進、TCMS 時鐘更新與早發/延遲檢測 ---
@@ -2723,7 +2895,7 @@
                         const clockEl = document.getElementById('ui-clock');
                         if (clockEl) clockEl.innerText = clockStr;
 
-                        // 提早發車檢測：若車速 > 0.05 且離預定發車時間提早超過 5 秒則判定違規
+                        // 提早發車檢測與延誤檢測 (統一於發車時判定)
                         if (!state.stationDeparted && state.v > 0.05 && !state.door && !state.doorClosing) {
                             state.stationDeparted = true;
 
@@ -2750,29 +2922,15 @@
                                 gameOver(`違規發車！\n提早 ${Math.ceil(earlySecs)} 秒發車！\n(嚴格防護規定：不可提早超過 5 秒發車)`, false);
                                 return;
                             }
-                        }
 
-                        // 延遲超過 2 分鐘 (120 秒) 遊戲結束判定 (開門中/開門後與終點站不檢測誤點，僅在關門/離站時檢測中間站)
-                        if (state.active && state.route && state.route.length > 0) {
-                            let isDoorOpen = state.door || state.doorOpening;
-                            let isAtPlatform = isDoorOpen || state.doorClosing;
-                            let targetIdx = isAtPlatform ? Math.max(0, state.idx - 1) : Math.min(state.route.length - 1, state.idx);
-                            let currentStop = state.route[targetIdx];
+                            // ▼ 延遲超過 2 分鐘 (120 秒) 遊戲結束判定 ▼
+                            let isDestinationStation = !currentStop || (state.idx >= state.route.length);
+                            if (!isDestinationStation && currentDepSec && currentDepSec !== 28800) {
+                                let delaySecs = state.gameTimeSecs - currentDepSec;
 
-                            // 精準判定車次設定之到達目的地終點站 (state.route[state.route.length - 1])
-                            let isDestinationStation = !currentStop ||
-                                (targetIdx >= state.route.length - 1) ||
-                                (currentStop === state.route[state.route.length - 1]);
-
-                            // 核心關鍵防護：【開門中/已開門(isDoorOpen)】與【終點站(isDestinationStation)】不進行誤點檢測，僅在關門/離站時檢測【中間停靠站】
-                            if (!isDoorOpen && !isDestinationStation && currentStop && currentStop.isStop && currentStop.depSecs && currentStop.depSecs !== 28800) {
-                                let delaySecs = state.gameTimeSecs - currentStop.depSecs;
-
-                                // 24 小時跨日/午夜溢位修正
                                 if (delaySecs > 43200) delaySecs -= 86400;
                                 if (delaySecs < -43200) delaySecs += 86400;
 
-                                // 僅在真正的駕駛狀態、且確實落後超過 120 秒時才判定失敗
                                 if (delaySecs > 120) {
                                     gameOver(`列車運轉嚴重延誤！\n已延誤 ${Math.floor(delaySecs)} 秒 (超過 120 秒限制)\n無法維持定時運轉，檢定失敗！`, false);
                                     return;
@@ -2860,6 +3018,27 @@
 
                     state.stops++;
                     state.stationDeparted = false;
+
+                    // 檢查停靠車站與月台進行鏡頭無縫切換
+                    let currentStoppedStation = state.route[state.idx];
+                    let matchedP = (state.matchedTrain && state.matchedTrain.platforms) ? state.matchedTrain.platforms : {};
+
+                    // 1. FR01 (飛灣工業區) 停靠月台4，於 FR02 (飛灣港) 停車時無縫切換鏡頭 (FR01~FR02 多拐彎側線鏡頭 local_fr01_p4)
+                    let pFR01 = String(matchedP["飛灣工業區"] || matchedP["FR01"] || matchedP["工業區"] || "");
+                    if (pFR01.includes("4") && currentStoppedStation && currentStoppedStation.name.includes("FR02")) {
+                        state.camType = 'local_fr01_p4';
+                    }
+
+                    // 2. 下行且 FR12 (飛灣公園) 停靠月台4，於 FR11 (飛灣大道) 停車後無縫切換鏡頭 (中間袋形軌至 FR12 第四月台側線鏡頭 fr11_fr12_pocket)
+                    let pFR12 = String(matchedP["飛灣公園"] || matchedP["FR12"] || matchedP["公園"] || "");
+                    if (state.dir === 'down' && pFR12.includes("4") && currentStoppedStation && currentStoppedStation.name.includes("FR11")) {
+                        state.camType = 'fr11_fr12_pocket';
+                    }
+
+                    // 3. 上行普通車停靠 FR11 (飛灣大道) 時，切回普通車鏡頭 (local)
+                    if (state.dir === 'up' && state.type === 'local' && currentStoppedStation && currentStoppedStation.name.includes("FR11")) {
+                        state.camType = 'local';
+                    }
 
                     if (state.idx >= state.route.length - 1) {
                         gameOver(`🎉 檢定通過！已成功抵達目的地終點站：${state.route[state.idx].name}\n停車誤差: ${state.lastResultText || ''}`, true);
@@ -3049,6 +3228,9 @@
                     }
                 });
             }
+            if (state.camType === 'fr11_fr12_pocket') {
+                activeZones.push({ start: 27100, end: 28760, limit: 45 });
+            }
 
             // 根據車種設定長度：直達車(Express)通常較長，普通車(Local)較短
             // 你可以依照飛灣鐵路公司的編組需求自行調整數值
@@ -3083,7 +3265,7 @@
                 dynamicLimit = Math.min(dynamicLimit, applyBrakingCurve(maxLimit, pt.limit, pt.dist));
             });
             state.atpLimit = Math.min(finalLimit, dynamicLimit);
-            if (state.door || state.doorClosing) state.atpLimit = 45;
+            if (state.door || state.doorClosing) state.atpLimit = 0;
 
             // --- B. 計算 3 秒後的狀態 (預警用) ---
             let predictTime = 3.0;
@@ -3189,11 +3371,12 @@
             if (scene.fog) scene.fog.color.setRGB(r, g, b);
             // --- 修改結束 ---
 
-            let offset = getTrainOffset(state.d, state.type, state.dir);
+            let currentCamType = state.camType || state.type;
+            let offset = getTrainOffset(state.d, currentCamType, state.dir);
             let p = getPtDetail(state.d, offset);
             camera.position.set(p.x, p.y + 2.1, p.z);
             let lookDist = (state.dir === 'down') ? state.d + 50 : state.d - 50;
-            let lookOffset = getTrainOffset(lookDist, state.type, state.dir);
+            let lookOffset = getTrainOffset(lookDist, currentCamType, state.dir);
             let pLook = getPtDetail(lookDist, lookOffset);
             if (state.v > 1) { let shake = (Math.random() - 0.5) * 0.01 * (state.v / 30); pLook.x += shake; pLook.y += shake; }
             camera.lookAt(pLook.x, pLook.y + 2.1, pLook.z);
@@ -3254,6 +3437,20 @@
             if (state.doorClosing || state.doorOpening || (state.emer.triggered && !state.emer.cleared)) return;
 
             if (state.door) {
+                // 檢查是否超過預定發車時間 (誤點超過 120 秒判定失敗)
+                let depStopIdx = Math.max(0, state.idx - 1);
+                let currentDepStop = (state.route && state.route[depStopIdx]) ? state.route[depStopIdx] : null;
+                let scheduledDepSec = (currentDepStop && currentDepStop.depSecs) ? currentDepStop.depSecs : state.departureSecs;
+                if (scheduledDepSec && scheduledDepSec !== 28800) {
+                    let delaySecs = state.gameTimeSecs - scheduledDepSec;
+                    if (delaySecs > 43200) delaySecs -= 86400;
+                    if (delaySecs < -43200) delaySecs += 86400;
+                    if (delaySecs > 120) {
+                        gameOver(`列車運轉嚴重延誤！\n關門發車時已延誤 ${Math.floor(delaySecs)} 秒 (超過 120 秒限制)\n無法維持定時運轉，檢定失敗！`, false);
+                        return;
+                    }
+                }
+
                 // ===============================
                 // 1. 關門程序 (月台音樂 -> 車門警示音)
                 // ===============================
@@ -3490,7 +3687,8 @@
                     modeTag.style.display = 'none';
                 }
             }
-            ui.grad.innerText = state.grade.toFixed(1) + "‰";
+            let dispGrade = state.grade === 0 ? 0 : -state.grade;
+            ui.grad.innerText = (dispGrade > 0 ? "+" : "") + dispGrade.toFixed(1) + "‰";
             ui.grad.style.color = (state.grade > 0) ? "var(--color-err)" : ((state.grade < 0) ? "var(--color-ok)" : "#eee");
 
             // 操控感手把視覺：在 ATO 運轉中手把位置不隨控速晃動，停車時於 B4 (50%)
