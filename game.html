@@ -1456,11 +1456,13 @@
                 }
             }
 
-            // 層 4（最高優先）：起點為 FR01 且停靠月台4 → FR01月台4鏡頭（覆蓋一切）
+            // 層 4（最高優先）：起點為 FR01 且停靠月台4 / 月台1 → FR01月台4/月台1鏡頭（覆蓋一切）
             if (startStNameForCam.includes("FR01") || startStNameForCam.includes("工業區")) {
                 let pFR01cam = String(matchedPForCam["飛灣工業區"] || matchedPForCam["FR01"] || matchedPForCam["工業區"] || "");
                 if (pFR01cam.includes("4")) {
                     state.camType = 'local_fr01_p4';
+                } else if (pFR01cam.includes("1")) {
+                    state.camType = 'local_fr01_p1';
                 }
             }
 
@@ -1965,6 +1967,29 @@
                 else { return L_out !== null ? L_out : L_in; }
             }
 
+            // 鏡頭 1-2: FR01 月台1出站路徑 (local_fr01_p1)
+            if (type === 'local_fr01_p1') {
+                // FR01 月台1 (+9.2m)，下行由外軌並軌至下行正線 (+2m)，不需跨越 X 橫渡線：
+                //   第一段 d=100~250：+9.2m → +2m（月台1外軌並軌右正線/下行正線）
+                //   後續 d >= 250：保持在 +2m（下行正線）
+                // 上行：d=250~100 從右正線 +2m 切入月台1 +9.2m
+                if (d < 450) {
+                    if (dir === 'down') {
+                        if (d < 100) return 9.2;                           // 月台1本線
+                        if (d <= 250) { let t = (d - 100) / 150; return 9.2 - 7.2 * easeInOut(t); }   // 並軌段
+                        return 2;                                          // 下行正線
+                    } else {
+                        if (d <= 100) return 9.2;                          // 月台1本線
+                        if (d <= 250) { let t = (d - 100) / 150; return 9.2 - 7.2 * easeInOut(t); }   // 側線切入段
+                        return 2;                                          // 正線
+                    }
+                }
+                // d >= 450：走普通車路徑
+                let { L_in, R_in, L_out, R_out } = getBaseOffsets(d);
+                if (dir === 'down') { return R_out !== null ? R_out : R_in; }
+                else { return L_out !== null ? L_out : L_in; }
+            }
+
             // 新增鏡頭 2: FR11~FR12 經過中間袋形軌到 FR12 第四月台側線 (fr11_fr12_pocket)
             if (type === 'fr11_fr12_pocket') {
                 if (d >= 26900 && d <= 28800) {
@@ -2014,8 +2039,8 @@
                 else { return L_out !== null ? L_out : L_in; }
             }
 
-            // 1. 終點橫渡線 (FR01, 0-450m)（非月台 4 專屬路徑時的預設判斷）
-            if (d < 450 && type !== 'local_fr01_p4') {
+            // 1. 終點橫渡線 (FR01, 0-450m)（非月台 4 / 月台 1 專屬路徑時的預設判斷）
+            if (d < 450 && type !== 'local_fr01_p4' && type !== 'local_fr01_p1') {
                 if (dir === 'down') {
                     if (type === 'local') {
                         if (d < 300) return -2;
@@ -2062,7 +2087,7 @@
             }
 
             // 3. 一般路段
-            let isLocalType = (type === 'local' || type === 'local_fr01_p4' || type === 'fr11_fr12_pocket');
+            let isLocalType = (type === 'local' || type === 'local_fr01_p4' || type === 'local_fr01_p1' || type === 'fr11_fr12_pocket');
             let { L_in, R_in, L_out, R_out } = getBaseOffsets(d);
             if (dir === 'down') { if (isLocalType && R_out !== null) return R_out; return R_in; }
             else { if (isLocalType && L_out !== null) return L_out; return L_in; }
@@ -2413,11 +2438,13 @@
                 }
             }
 
-            // 層 4（最高優先）：起點為 FR01 且停靠月台4 → FR01月台4鏡頭（覆蓋一切）
+            // 層 4（最高優先）：起點為 FR01 且停靠月台4 / 月台1 → FR01月台4/月台1鏡頭（覆蓋一切）
             if (startStName.includes("FR01") || startStName.includes("工業區")) {
                 let pFR01_start = String(matchedP["飛灣工業區"] || matchedP["FR01"] || matchedP["工業區"] || "");
                 if (pFR01_start.includes("4")) {
                     state.camType = 'local_fr01_p4';
+                } else if (pFR01_start.includes("1")) {
+                    state.camType = 'local_fr01_p1';
                 }
             }
 
@@ -2858,7 +2885,7 @@
 
         function stepGame(now) {
             // 通勤快速鏡頭無縫切換：離開自然保育中心(56250m)往綾路北站切換為普通鏡頭，反之進入自然保育中心切換為快速鏡頭
-            if (state.active && state.type === 'commuter_express' && state.camType !== 'local_fr01_p4' && state.camType !== 'fr11_fr12_pocket') {
+            if (state.active && state.type === 'commuter_express' && state.camType !== 'local_fr01_p4' && state.camType !== 'local_fr01_p1' && state.camType !== 'fr11_fr12_pocket') {
                 if (state.d > 56250) {
                     state.camType = 'local';
                 } else if (state.d > 26950) {
@@ -3024,10 +3051,12 @@
                     let currentStoppedStation = state.route[state.idx];
                     let matchedP = (state.matchedTrain && state.matchedTrain.platforms) ? state.matchedTrain.platforms : {};
 
-                    // 1. FR01 (飛灣工業區) 停靠月台4，於 FR02 (飛灣港) 停車時無縫切換鏡頭 (FR01~FR02 多拐彎側線鏡頭 local_fr01_p4)
+                    // 1. FR01 (飛灣工業區) 停靠月台4 / 月台1，於 FR02 (飛灣港) 停車時無縫切換鏡頭 (FR01~FR02 側線鏡頭 local_fr01_p4 / local_fr01_p1)
                     let pFR01 = String(matchedP["飛灣工業區"] || matchedP["FR01"] || matchedP["工業區"] || "");
                     if (pFR01.includes("4") && currentStoppedStation && currentStoppedStation.name.includes("FR02")) {
                         state.camType = 'local_fr01_p4';
+                    } else if (pFR01.includes("1") && currentStoppedStation && currentStoppedStation.name.includes("FR02")) {
+                        state.camType = 'local_fr01_p1';
                     }
 
                     // 2. 下行且 FR12 (飛灣公園) 停靠月台4，於 FR11 (飛灣大道) 停車後無縫切換鏡頭 (中間袋形軌至 FR12 第四月台側線鏡頭 fr11_fr12_pocket)
