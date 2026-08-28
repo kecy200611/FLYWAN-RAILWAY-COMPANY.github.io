@@ -1291,7 +1291,7 @@
             { start: 0, end: 400, limit: 45 },        // FR01 Terminal Crossover
             { start: 9200, end: 9680, limit: 75 },    // FR04 Curve
             { start: 17900, end: 18380, limit: 75 },  // FR06 Curve
-            { start: 28240, end: 28800, limit: 60 },  // FR12 飛灣公園站內
+            { start: 27100, end: 28800, limit: 45 },  // FR11 飛灣大道 ~ FR12 飛灣公園
             { start: 28800, end: 29430, limit: 60 },  // FR12 往錦湖 第一彎
             { start: 29500, end: 29820, limit: 90 },  // FR12 往錦湖 第二彎
             { start: 32600, end: 32920, limit: 90 },  // FR15 Approach
@@ -3963,24 +3963,25 @@
                     state.atoDoorOpened = false;
                     state.stationDeparted = false;
                     state.departureChecked = false;
-                    state.isATO = true;
-                    state.manualRequested = false;
-                    state.atoManualDisengaged = false;
-                    state.blueFlashTimer = 0;
-                    state.cmdQueue = [];
-                    state.b = 0;
-                    state.appliedB = 0;
-                    state.atoCurrentBrake = 0;
-                    if (ui.lampDoor) ui.lampDoor.classList.remove('on');
-                    ui.door.innerText = "CLSD"; ui.door.style.color = "var(--color-ok)";
-                    showMsg("🟢 發車！ (READY) ➔ ATO 自動駕駛啟動");
 
-                    let currentSt = state.route[state.idx - 1];
-                    if (state.occTargetStationName && currentSt && (currentSt.name === state.occTargetStationName || currentSt === state.occTargetStation)) {
-                        let departStName = currentSt.name;
-                        state.occTargetStationName = null;
-                        state.occTargetStation = null;
-                        showMsg(`🟢 已自通話指定站 [${departStName}] 發車！\n自動啟用 ATO 自動駕駛`);
+                    if (state.manualRequested) {
+                        state.isATO = false;
+                        state.atoManualDisengaged = true;
+                        if (ui.lampDoor) ui.lampDoor.classList.remove('on');
+                        ui.door.innerText = "CLSD"; ui.door.style.color = "var(--color-ok)";
+                        showMsg("🟢 發車！ (READY) ➔ 手動駕駛 (CM) 模式");
+                    } else {
+                        state.isATO = true;
+                        state.manualRequested = false;
+                        state.atoManualDisengaged = false;
+                        state.blueFlashTimer = 0;
+                        state.cmdQueue = [];
+                        state.b = 0;
+                        state.appliedB = 0;
+                        state.atoCurrentBrake = 0;
+                        if (ui.lampDoor) ui.lampDoor.classList.remove('on');
+                        ui.door.innerText = "CLSD"; ui.door.style.color = "var(--color-ok)";
+                        showMsg("🟢 發車！ (READY) ➔ ATO 自動駕駛啟動");
                     }
                 }
             }
@@ -4115,7 +4116,7 @@
                 }
             }
 
-            if (state.door || state.doorClosing || (state.radioEmer && state.radioEmer.triggered && state.v === 0 && !state.radioEmer.cleared)) {
+            if (state.door || state.doorClosing || (state.radioEmer && state.radioEmer.triggered && (state.v === 0 || Math.abs(state.v) <= 0.05 || state.radioEmer.stopped) && !state.radioEmer.cleared)) {
                 state.v = 0;
             } else {
                 const massInfo = getTrainMassInfo();
@@ -5028,7 +5029,7 @@
                     state.radioEmer.triggered = true;
                     state.radioEmer.reactionTimer = 2.0;
                     state.radioEmer.ebEngaged = (state.b === 9);
-                    state.radioEmer.stopped = false;
+                    state.radioEmer.stopped = (Math.abs(state.v) <= 0.05);
                     state.radioEmer.cleared = false;
                     state.radioEmer.communicating = false;
                     state.radioEmer.permissionGranted = false;
@@ -5038,7 +5039,11 @@
                         disengageATO();
                     }
                     startBuzzerBeeping();
-                    showMsg("⚠️ 防護無線發報！\n請於 2 秒內拉緊急煞車 (EB) 將列車完全停妥！");
+                    if (Math.abs(state.v) <= 0.05) {
+                        showMsg("⚠️ 防護無線發報！\n列車已停妥，請按 [Backspace] 向行控中心通報！");
+                    } else {
+                        showMsg("⚠️ 防護無線發報！\n請於 2 秒內拉緊急煞車 (EB) 將列車完全停妥！");
+                    }
                 }
             }
 
@@ -5050,27 +5055,34 @@
                 }
                 if (ui.rLim) ui.rLim.classList.add('radio-flash');
 
-                // 失敗條件 1：兩秒內未拉 EB
-                if (!state.radioEmer.ebEngaged) {
-                    if (state.b === 9) {
-                        state.radioEmer.ebEngaged = true;
-                    } else {
-                        state.radioEmer.reactionTimer -= dt;
-                        if (state.radioEmer.reactionTimer <= 0) {
-                            gameOver("防護無線警報響起\n未在 2 秒內使用緊急煞車 (EB)\n違反運轉防護規定，檢定失敗！", false);
-                            return;
+                // 判斷車速狀態
+                if (Math.abs(state.v) > 0.05) {
+                    // --- 情況 A：列車移動中 (速度 > 0) ---
+                    // 失敗條件 1：兩秒內未拉 EB
+                    if (!state.radioEmer.ebEngaged) {
+                        if (state.b === 9) {
+                            state.radioEmer.ebEngaged = true;
+                        } else {
+                            state.radioEmer.reactionTimer -= dt;
+                            if (state.radioEmer.reactionTimer <= 0) {
+                                gameOver("防護無線警報響起\n未在 2 秒內使用緊急煞車 (EB)\n違反運轉防護規定，檢定失敗！", false);
+                                return;
+                            }
                         }
                     }
-                }
 
-                // 失敗條件 2：煞車到完全停止的過程中離開 EB (b < 9)
-                if (Math.abs(state.v) > 0.05) {
+                    // 失敗條件 2：煞車到完全停止的過程中離開 EB (b < 9)
                     if (state.radioEmer.ebEngaged && state.b < 9) {
                         gameOver("防護無線停車處置違規\n煞車減速至完全停止過程中離開緊急煞車 (EB)\n違反運轉防護規定，檢定失敗！", false);
                         return;
                     }
                 } else {
+                    // --- 情況 B：列車已停妥 (速度 = 0) ---
+                    // 速度 = 0 時僅需通報即可，不需在 2 秒內拉 EB，但亦可拉 EB
                     state.radioEmer.stopped = true;
+                    if (state.b === 9) {
+                        state.radioEmer.ebEngaged = true;
+                    }
                 }
 
                 // 失敗條件 3：停車後未回報行控中心防護無線發報或未得到許可開車即啟動列車
@@ -5088,12 +5100,12 @@
                         state.radioEmer.communicating = false;
                         state.radioEmer.cleared = true;
                         state.radioEmer.permissionGranted = true;
-                        state.radioEmer.ebRequiredReset = true;
+                        state.radioEmer.ebRequiredReset = (state.b === 9);
                         stopBuzzer();
                         if (ui.lampAtp) ui.lampAtp.classList.remove('radio');
                         if (ui.rLim) ui.rLim.classList.remove('radio-flash');
                         state.permissionDelayOffset = (state.permissionDelayOffset || 0) + 15;
-                        showMsg("🟢 障礙排除，已取得開車許可！\n請釋放煞車並重設 EB 後繼續行駛\n(後續各站出發許可延遲 15 秒)");
+                        showMsg("🟢 障礙排除，已取得開車許可！\n請釋放煞車並重設 EB (如有使用) 後繼續行駛\n(後續各站出發許可延遲 15 秒)");
                     }
                     updateMsgDisplay();
                 }
@@ -5627,13 +5639,13 @@
                 } else if (state.occMenu.step === 'setting') {
                     parts.push(`📞 設定手動駕駛 (${Math.ceil(state.occMenu.settingTimer)}秒)...\n目標站: ${state.occMenu.targetName}`);
                 }
-            } else if (state.radioEmer && state.radioEmer.triggered && !state.radioEmer.cleared && state.v === 0) {
+            } else if (state.radioEmer && state.radioEmer.triggered && !state.radioEmer.cleared && (state.v === 0 || Math.abs(state.v) <= 0.05 || state.radioEmer.stopped)) {
                 if (state.radioEmer.communicating) {
                     isCall = true;
                     parts.push(`📞 行控通話處置中...\n確認前方區間安全與取得開車許可: ${Math.ceil(state.radioEmer.occTimer)} 秒`);
                 } else {
                     isWarn = true;
-                    parts.push(`⛔ 列車已緊急停車 ⛔\n請按 [Backspace] 聯繫行控中心回報防護無線發報`);
+                    parts.push(`⛔ 列車已停妥 ⛔\n請按 [Backspace] 聯繫行控中心回報防護無線發報`);
                 }
             }
 
@@ -5889,7 +5901,7 @@
         if (gameCanvasEl) {
             gameCanvasEl.addEventListener('click', (e) => {
                 resetVigilance();
-                if (state.radioEmer && state.radioEmer.triggered && !state.radioEmer.cleared && state.v === 0) {
+                if (state.radioEmer && state.radioEmer.triggered && !state.radioEmer.cleared && (state.v === 0 || Math.abs(state.v) <= 0.05 || state.radioEmer.stopped)) {
                     toggleOccMenu();
                 } else if (Math.abs(state.v) < 0.1) {
                     inputDoor();
