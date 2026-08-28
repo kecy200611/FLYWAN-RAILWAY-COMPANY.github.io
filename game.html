@@ -1318,6 +1318,9 @@
             // 緊急狀況系統 (重新建構)
             permissionDelayOffset: 0,
             radioEmer: { enabled: false, triggered: false, triggerDist: 0, reactionTimer: 2.0, ebEngaged: false, stopped: false, reported: false, communicating: false, occTimer: 0, permissionGranted: false, cleared: false, ebRequiredReset: false },
+            cbtcEmer: { enabled: false, triggered: false, triggerDist: 0, reactionTimer: 2.0, ebEngaged: false, stopped: false, reported: false, communicating: false, occTimer: 0, settingRM: false, settingRMTimer: 0, rmReady: false, restoring: false, restoreTimer: 0, restored: false, ebRequiredReset: false },
+            passengerEmer: { enabled: false, triggered: false, triggerDist: 0, timer: 60.0, reported: false, cleared: false },
+            isRM: false,
             doorEmer: { hasFault: false, faultCarIdx: -1, rollDone: false, rolledStationIdx: -1, rollTimer: 0, active: false, reclosing: false, pendingOccReport: false, reportedToOcc: false, faultStationIdx: -1 },
             idleTime: 0,           // 累計閒置秒數
             vigilanceTimer: 5.0,   // 觸發後的 5 秒倒數
@@ -2010,9 +2013,12 @@
         // ========================================================
         function initEmergencySystem() {
             state.permissionDelayOffset = 0;
+            state.isRM = false;
 
-            // 標準抽籤程序：每趟運轉標準 1% 機率抽籤決定是否觸發無線電緊急狀況
+            // 標準抽籤程序：每趟運轉標準 1% 機率抽籤決定是否觸發各項緊急狀況
             let hasRadioEmer = (Math.random() < 0.01);
+            let hasCbtcEmer = (Math.random() < 0.01);
+            let hasPassengerEmer = (Math.random() < 0.01);
 
             state.radioEmer = {
                 enabled: hasRadioEmer,
@@ -2029,12 +2035,50 @@
                 ebRequiredReset: false
             };
 
-            if (hasRadioEmer && state.route && state.route.length >= 2) {
+            state.cbtcEmer = {
+                enabled: hasCbtcEmer,
+                triggered: false,
+                triggerDist: 0,
+                reactionTimer: 2.0,
+                ebEngaged: false,
+                stopped: false,
+                reported: false,
+                communicating: false,
+                occTimer: 0,
+                settingRM: false,
+                settingRMTimer: 0,
+                rmReady: false,
+                restoring: false,
+                restoreTimer: 0,
+                restored: false,
+                ebRequiredReset: false
+            };
+
+            state.passengerEmer = {
+                enabled: hasPassengerEmer,
+                triggered: false,
+                triggerDist: 0,
+                timer: 60.0,
+                reported: false,
+                cleared: false
+            };
+
+            if (state.route && state.route.length >= 2) {
                 let startD = state.route[0].data.dist;
                 let endD = state.route[state.route.length - 1].data.dist;
                 let totalD = Math.abs(endD - startD);
-                let randFraction = 0.05 + Math.random() * 0.90;
-                state.radioEmer.triggerDist = (state.dir === 'down') ? (startD + totalD * randFraction) : (startD - totalD * randFraction);
+                if (hasRadioEmer) {
+                    let randFraction = 0.05 + Math.random() * 0.90;
+                    state.radioEmer.triggerDist = (state.dir === 'down') ? (startD + totalD * randFraction) : (startD - totalD * randFraction);
+                }
+                if (hasCbtcEmer) {
+                    let randFraction = 0.05 + Math.random() * 0.90;
+                    state.cbtcEmer.triggerDist = (state.dir === 'down') ? (startD + totalD * randFraction) : (startD - totalD * randFraction);
+                }
+                if (hasPassengerEmer) {
+                    let randFraction = 0.05 + Math.random() * 0.90;
+                    state.passengerEmer.triggerDist = (state.dir === 'down') ? (startD + totalD * randFraction) : (startD - totalD * randFraction);
+                }
             }
 
             // 首站車門異常抽籤（確保在場景時間與路線初始化完成後執行，依標準 6:45~8:45, 16:45~19:45 尖峰時段機率 0.1 抽籤）
@@ -3602,6 +3646,8 @@
             }
             items.push({ id: 'door', text: '列車車門關閉延遲' });
             items.push({ id: 'radio', text: '列車防護無線發報' });
+            items.push({ id: 'cbtc', text: '回報速度碼丟失' });
+            items.push({ id: 'passenger', text: '回報旅客緊急狀況' });
             items.push({ id: 'exit', text: '結束通話' });
 
             return items;
@@ -3623,6 +3669,10 @@
             }
             if (state.radioEmer && state.radioEmer.triggered && !state.radioEmer.cleared && state.v > 0.05) {
                 showMsg("⚠️ 防護無線動作中！請先拉緊急煞車 (EB) 將列車完全停妥再行通報！");
+                return;
+            }
+            if (state.cbtcEmer && state.cbtcEmer.triggered && !state.cbtcEmer.rmReady && !state.cbtcEmer.restored && state.v > 0.05) {
+                showMsg("⚠️ 速度碼丟失動作中！請先拉緊急煞車 (EB) 將列車完全停妥再行通報！");
                 return;
             }
             state.occMenu.active = true;
@@ -3696,6 +3746,33 @@
                     state.radioEmer.reported = true;
                     state.radioEmer.communicating = true;
                     state.radioEmer.occTimer = 10.0;
+                    updateMsgDisplay();
+                } else if (selectedItem.id === 'cbtc') {
+                    let isCbtcActive = state.cbtcEmer && state.cbtcEmer.triggered && !state.cbtcEmer.rmReady && !state.cbtcEmer.restored;
+                    if (!isCbtcActive) {
+                        gameOver("通報行控中心錯誤資訊！\n目前未發生速度碼丟失，卻虛報速度碼丟失！\n違反運轉通報規定，檢定失敗！", false);
+                        return;
+                    }
+                    if (state.v > 0.05) {
+                        showMsg("⚠️ 速度碼丟失動作中！請先拉緊急煞車 (EB) 將列車完全停妥再行通報！");
+                        state.occMenu.active = false;
+                        return;
+                    }
+                    state.occMenu.active = false;
+                    state.cbtcEmer.reported = true;
+                    state.cbtcEmer.communicating = true;
+                    state.cbtcEmer.occTimer = 5.0; // 回報 5 秒
+                    updateMsgDisplay();
+                } else if (selectedItem.id === 'passenger') {
+                    let isPassengerActive = state.passengerEmer && state.passengerEmer.triggered && !state.passengerEmer.reported;
+                    if (!isPassengerActive) {
+                        gameOver("通報行控中心錯誤資訊！\n目前未收到旅客緊急狀況，卻虛報旅客緊急狀況！\n違反運轉通報規定，檢定失敗！", false);
+                        return;
+                    }
+                    state.occMenu.active = false;
+                    state.passengerEmer.reported = true;
+                    state.passengerEmer.cleared = true;
+                    showMsg("📞 行控中心：「收到旅客緊急狀況回報。已通報站務與鐵路警察於下站待命支援，請維持正常運轉。」");
                     updateMsgDisplay();
                 } else if (selectedItem.id === 'exit') {
                     state.occMenu.active = false;
@@ -4106,17 +4183,25 @@
             // 1. 如果玩家已經把煞車推離 EB (b < 9)，就重設鎖定，恢復嚴格判定
             if (state.b < 9) {
                 if (state.radioEmer) state.radioEmer.ebRequiredReset = false;
+                if (state.cbtcEmer) state.cbtcEmer.ebRequiredReset = false;
             }
 
-            // 2. 只有在「非緊急狀態」且「手把已經重設過」的情況下，使用 EB 才會失敗
-            if ((!state.radioEmer || !state.radioEmer.triggered || state.radioEmer.cleared) && state.b === 9) {
-                if (!state.radioEmer || state.radioEmer.ebRequiredReset === false) {
-                    gameOver("操作違規\n非緊急狀況不可使用緊急煞車 (EB)", false);
-                    return;
-                }
+            // 2. 只有在「非緊急狀態」且「手把已經重設過」的情況下，使用 EB 才會失敗 (排除防護無線與 CBTC 速度碼丟失)
+            let isRadioActive = state.radioEmer && state.radioEmer.triggered && !state.radioEmer.cleared;
+            let isRadioResetting = state.radioEmer && state.radioEmer.ebRequiredReset;
+            let isCbtcActive = state.cbtcEmer && state.cbtcEmer.triggered && !state.cbtcEmer.rmReady && !state.cbtcEmer.restored;
+            let isCbtcResetting = state.cbtcEmer && state.cbtcEmer.ebRequiredReset;
+
+            let isEmergencyEBAllowed = isRadioActive || isRadioResetting || isCbtcActive || isCbtcResetting;
+
+            if (!isEmergencyEBAllowed && state.b === 9) {
+                gameOver("操作違規\n非緊急狀況不可使用緊急煞車 (EB)", false);
+                return;
             }
 
-            if (state.door || state.doorClosing || (state.radioEmer && state.radioEmer.triggered && (state.v === 0 || Math.abs(state.v) <= 0.05 || state.radioEmer.stopped) && !state.radioEmer.cleared)) {
+            if (state.door || state.doorClosing ||
+                (state.radioEmer && state.radioEmer.triggered && (state.v === 0 || Math.abs(state.v) <= 0.05 || state.radioEmer.stopped) && !state.radioEmer.cleared) ||
+                (state.cbtcEmer && state.cbtcEmer.triggered && (state.v === 0 || Math.abs(state.v) <= 0.05 || state.cbtcEmer.stopped) && !state.cbtcEmer.rmReady && !state.cbtcEmer.restored)) {
                 state.v = 0;
             } else {
                 const massInfo = getTrainMassInfo();
@@ -4155,7 +4240,19 @@
                 let deltaD = state.v * dt;
                 if (state.dir === 'down') state.d += deltaD; else state.d -= deltaD;
 
-                if ((!state.radioEmer || !state.radioEmer.triggered || state.radioEmer.cleared) && state.v * 3.6 > state.atpLimit + 1) { gameOver("ATP OVERSPEED (超速)", false); return; }
+                let isRadioActive = state.radioEmer && state.radioEmer.triggered && !state.radioEmer.cleared;
+                let isCbtcActive = state.cbtcEmer && state.cbtcEmer.triggered && !state.cbtcEmer.rmReady && !state.cbtcEmer.restored;
+                let isRMMode = state.isRM || (state.cbtcEmer && state.cbtcEmer.rmReady && !state.cbtcEmer.restored);
+
+                if (isRMMode) {
+                    if (state.v * 3.6 > 15 + 1) {
+                        gameOver("RM 模式超速！\nRM 限制手動駕駛模式速度不得超過 15 km/h！\n違反運轉安全規定，檢定失敗！", false);
+                        return;
+                    }
+                } else if (!isRadioActive && !isCbtcActive && state.v * 3.6 > state.atpLimit + 1) {
+                    gameOver("ATP OVERSPEED (超速)", false);
+                    return;
+                }
 
                 let targetStop = getTargetStopInfo();
                 let targetPos = (state.dir === 'down') ? targetStop.data.dist + 77 : targetStop.data.dist - 77;
@@ -4938,26 +5035,33 @@
 
                 // 2. 開始判斷顯示優先級
 
+                let isRMMode = state.isRM || (state.cbtcEmer && state.cbtcEmer.rmReady && !state.cbtcEmer.restored);
+
                 // [優先級 1 - 最高] 緊急狀況 / 防護無線
                 if (state.radioEmer && state.radioEmer.triggered && !state.radioEmer.cleared) {
                     ui.lampAtp.className = 'lamp radio';
                     ui.lampAtp.innerText = "RADIO ALARM";
                 }
-                // [優先級 2] ATP 預警 (超速或加速中)
-                else if (predictOverspeed) {
+                // [優先級 1.5] CBTC 位置丟失故障 (藍燈閃爍)
+                else if (state.cbtcEmer && state.cbtcEmer.triggered && !state.cbtcEmer.rmReady && !state.cbtcEmer.restored) {
+                    ui.lampAtp.className = 'lamp blue-flash';
+                    ui.lampAtp.innerText = "CBTC LOSS";
+                }
+                // [優先級 2] ATP 預警 (超速或加速中，RM 模式下不再有速度警告)
+                else if (!isRMMode && predictOverspeed) {
                     ui.lampAtp.className = 'lamp warn'; // 強制設為黃燈樣式
                     ui.lampAtp.innerText = "ATP WARN";
                 }
                 // [優先級 3] 警醒裝置 (閒置過久)
                 // 只有在沒有緊急狀況、且 ATP 沒有警告時，才會顯示綠燈
                 else if (state.vigilanceActive) {
-                    ui.lampAtp.className = 'lamp vigilance'; // 設為綠燈樣式 (需配合第一步的CSS)
+                    ui.lampAtp.className = 'lamp vigilance'; // 設為綠燈樣式
                     ui.lampAtp.innerText = `VIGILANCE (${Math.ceil(state.vigilanceTimer)})`;
                 }
                 // [優先級 4 - 最低] 正常狀態
                 else {
                     ui.lampAtp.className = 'lamp'; // 恢復普通樣式
-                    ui.lampAtp.innerText = "ATP NORM";
+                    ui.lampAtp.innerText = isRMMode ? "RM NORM" : "ATP NORM";
                 }
             }
         }
@@ -5127,6 +5231,164 @@
                     }
                 }
             }
+
+            // ========================================================
+            // 3. CBTC 位置丟失故障 (CBTC Position Loss Fault)
+            // ========================================================
+            if (state.cbtcEmer && state.cbtcEmer.enabled && !state.cbtcEmer.triggered) {
+                let reachedTrigger = (state.dir === 'down') ? (state.d >= state.cbtcEmer.triggerDist) : (state.d <= state.cbtcEmer.triggerDist);
+                if (reachedTrigger) {
+                    state.cbtcEmer.triggered = true;
+                    state.cbtcEmer.reactionTimer = 2.0;
+                    state.cbtcEmer.ebEngaged = (state.b === 9);
+                    state.cbtcEmer.stopped = (Math.abs(state.v) <= 0.05);
+                    state.cbtcEmer.restored = false;
+                    state.cbtcEmer.rmReady = false;
+                    state.cbtcEmer.communicating = false;
+                    state.cbtcEmer.settingRM = false;
+                    state.cbtcEmer.restoring = false;
+                    state.cbtcEmer.ebRequiredReset = false;
+
+                    if (state.isATO) {
+                        // ATO 自動 EB (操縱桿同時移動)
+                        state.b = 9;
+                        state.p = 0;
+                        state.appliedB = 9;
+                        state.appliedP = 0;
+                        state.cbtcEmer.ebEngaged = true;
+                        let now = performance.now() / 1000;
+                        if (!state.cmdQueue) state.cmdQueue = [];
+                        state.cmdQueue.push({ t: now + 0.2, p: 0, b: 9 });
+                        disengageATO();
+                        showMsg("⚠️ CBTC 位置丟失！速度碼丟失！\nATO 已自動施加緊急煞車 (EB)，請靜待列車完全停妥！");
+                    } else {
+                        // CM 駕駛狀態要手動 EB
+                        showMsg("⚠️ CBTC 位置丟失！速度碼丟失！\n請於 2 秒內拉緊急煞車 (EB) 將列車完全停妥！");
+                    }
+                    updateUI();
+                }
+            }
+
+            if (state.cbtcEmer && state.cbtcEmer.triggered && !state.cbtcEmer.restored) {
+                // 尚未切換至 RM 模式前：速度碼丟失、閃藍燈
+                if (!state.cbtcEmer.rmReady) {
+                    state.atpLimit = 0;
+                    if (ui.lampAtp) {
+                        ui.lampAtp.className = 'lamp blue-flash';
+                        ui.lampAtp.innerText = "CBTC LOSS";
+                    }
+
+                    // 判斷車速狀態
+                    if (Math.abs(state.v) > 0.05) {
+                        // 移動中：
+                        // 失敗條件 1：CM 狀態下兩秒內未手動 EB
+                        if (!state.cbtcEmer.ebEngaged) {
+                            if (state.b === 9) {
+                                state.cbtcEmer.ebEngaged = true;
+                            } else {
+                                state.cbtcEmer.reactionTimer -= dt;
+                                if (state.cbtcEmer.reactionTimer <= 0) {
+                                    gameOver("CBTC 位置丟失處置違規\nCM 手動駕駛模式下未在 2 秒內使用緊急煞車 (EB)！\n違反運轉防護規定，檢定失敗！", false);
+                                    return;
+                                }
+                            }
+                        }
+
+                        // 失敗條件 2：減速至停妥過程中離開 EB (b < 9)
+                        if (state.cbtcEmer.ebEngaged && state.b < 9) {
+                            gameOver("CBTC 位置丟失停車處置違規\n煞車減速至完全停止過程中離開緊急煞車 (EB)！\n違反運轉防護規定，檢定失敗！", false);
+                            return;
+                        }
+                    } else {
+                        // 已停妥
+                        state.cbtcEmer.stopped = true;
+                        if (state.b === 9) {
+                            state.cbtcEmer.ebEngaged = true;
+                        }
+                    }
+
+                    // 失敗條件 3：未回報即啟動（停妥後未通報或未設定 RM 前啟動列車）
+                    if (state.cbtcEmer.stopped && !state.cbtcEmer.rmReady) {
+                        if (Math.abs(state.v) > 0.05 || (state.p > 0 && state.b === 0)) {
+                            gameOver("CBTC 位置丟失處置違規\n未向行控中心回報速度碼丟失或未完成 RM 設定即擅自啟動列車！\n檢定失敗！", false);
+                            return;
+                        }
+                    }
+
+                    // OCC 回報處置計時 (回報 5 秒)
+                    if (state.cbtcEmer.communicating) {
+                        state.cbtcEmer.occTimer -= dt;
+                        if (state.cbtcEmer.occTimer <= 0) {
+                            state.cbtcEmer.communicating = false;
+                            state.cbtcEmer.settingRM = true;
+                            state.cbtcEmer.settingRMTimer = 5.0; // 設定 RM 手動駕駛 5 秒
+                        }
+                        updateMsgDisplay();
+                    }
+
+                    // OCC 設定 RM 手動駕駛計時 (設定 5 秒)
+                    if (state.cbtcEmer.settingRM) {
+                        state.cbtcEmer.settingRMTimer -= dt;
+                        if (state.cbtcEmer.settingRMTimer <= 0) {
+                            state.cbtcEmer.settingRM = false;
+                            state.cbtcEmer.rmReady = true;
+                            state.isATO = false;
+                            state.isRM = true;
+                            state.cbtcEmer.ebRequiredReset = (state.b === 9);
+                            state.permissionDelayOffset = (state.permissionDelayOffset || 0) + 60; // 回報後，允許延遲增加 60 秒
+                            showMsg("🟢 行控指令：已切換 RM 限制手動駕駛模式！\n速度限制 15 km/h，請釋放煞車並重設 EB 後慢速行駛至下一站\n(後續各站出發許可延遲 60 秒)");
+                        }
+                        updateMsgDisplay();
+                    }
+                } else {
+                    // 已設定 RM 模式：速度限制 15 KM，不再有橘條與速度警告
+                    state.atpLimit = 15;
+                    state.isATO = false;
+                    state.isRM = true;
+                }
+
+                // 到達下站開門時，自動花 5 秒設定速度碼及駕駛模式為 ATO
+                if (state.cbtcEmer.restoring) {
+                    state.cbtcEmer.restoreTimer -= dt;
+                    if (state.cbtcEmer.restoreTimer <= 0) {
+                        state.cbtcEmer.restoring = false;
+                        state.cbtcEmer.restored = true;
+                        state.cbtcEmer.rmReady = false;
+                        state.cbtcEmer.ebRequiredReset = false;
+                        state.isRM = false;
+                        state.isATO = true;
+                        state.atoManualDisengaged = false;
+                        showMsg("🟢 CBTC 速度碼已重新建立，駕駛模式已重設為 ATO 自動駕駛！");
+                        updateUI();
+                    }
+                    updateMsgDisplay();
+                }
+            }
+
+            // ========================================================
+            // 4. 旅客緊急狀況 (Passenger Emergency Alarm)
+            // ========================================================
+            if (state.passengerEmer && state.passengerEmer.enabled && !state.passengerEmer.triggered) {
+                let reachedTrigger = (state.dir === 'down') ? (state.d >= state.passengerEmer.triggerDist) : (state.d <= state.passengerEmer.triggerDist);
+                if (reachedTrigger) {
+                    state.passengerEmer.triggered = true;
+                    state.passengerEmer.timer = 60.0;
+                    state.passengerEmer.reported = false;
+                    state.passengerEmer.cleared = false;
+
+                    switchTcmsPage(1); // 以訊息方式 (要自動轉跳 TCMS 首頁) 告知駕駛員
+                    showMsg("⚠️ 旅客緊急狀況通報！車廂旅客發起緊急通話！\n請於 1 分鐘內按 [Backspace] 向行控中心通報！");
+                    updateMsgDisplay();
+                }
+            }
+
+            if (state.passengerEmer && state.passengerEmer.triggered && !state.passengerEmer.reported) {
+                state.passengerEmer.timer -= dt;
+                if (state.passengerEmer.timer <= 0) {
+                    gameOver("旅客緊急狀況處置違規！\n未在 1 分鐘內向行控中心回報旅客緊急狀況！\n違反運轉通報規定，檢定失敗！", false);
+                    return;
+                }
+            }
         }
 
         function inputDoor() {
@@ -5213,6 +5475,12 @@
                         state.doorEmer.reclosing = false;
                         state.doorEmer.pendingOccReport = false;
                         state.doorEmer.reportedToOcc = false;
+                    }
+
+                    // 到達下站開門時，自動花 5 秒設定速度碼及駕駛模式為 ATO
+                    if (state.cbtcEmer && state.cbtcEmer.rmReady && !state.cbtcEmer.restored && !state.cbtcEmer.restoring) {
+                        state.cbtcEmer.restoring = true;
+                        state.cbtcEmer.restoreTimer = 5.0;
                     }
 
                     if (ui.lampDoor) ui.lampDoor.classList.add('on');
@@ -5484,6 +5752,26 @@
                     msg = "⚠️ 防護無線動作";
                     color = "var(--color-radio)";
                 }
+            } else if (state.cbtcEmer && state.cbtcEmer.triggered && !state.cbtcEmer.restored) {
+                if (state.cbtcEmer.communicating) {
+                    msg = `📞 回報速度碼丟失 (${Math.ceil(state.cbtcEmer.occTimer)}s)`;
+                    color = "var(--color-atp)";
+                } else if (state.cbtcEmer.settingRM) {
+                    msg = `📞 設定 RM 手動駕駛 (${Math.ceil(state.cbtcEmer.settingRMTimer)}s)`;
+                    color = "var(--color-atp)";
+                } else if (state.cbtcEmer.restoring) {
+                    msg = `🔄 恢復 ATO 模式 (${Math.ceil(state.cbtcEmer.restoreTimer)}s)`;
+                    color = "var(--color-ato)";
+                } else if (state.cbtcEmer.rmReady) {
+                    msg = "⚠️ RM 限制手動模式 (限速 15)";
+                    color = "var(--color-atp)";
+                } else {
+                    msg = "⚠️ CBTC 速度碼丟失";
+                    color = "#00aaff";
+                }
+            } else if (state.passengerEmer && state.passengerEmer.triggered && !state.passengerEmer.reported) {
+                msg = `⚠️ 旅客緊急狀況 (${Math.ceil(state.passengerEmer.timer)}s)`;
+                color = "var(--color-err)";
             } else if (state.isATO) {
                 let currentStop = state.route[Math.max(0, state.idx - 1)];
                 let currentDepSec = (currentStop && currentStop.depSecs) ? currentStop.depSecs : state.departureSecs;
@@ -5525,8 +5813,15 @@
         function updateUI() {
             let kph = state.v * 3.6;
             if (ui.spd) ui.spd.innerText = Math.floor(Math.abs(kph));
-            let limPct = state.atpLimit / 140; if (limPct > 1) limPct = 1;
+
+            let isCbtcLoss = state.cbtcEmer && state.cbtcEmer.triggered && !state.cbtcEmer.restored;
+            let isRMMode = state.isRM || (state.cbtcEmer && state.cbtcEmer.rmReady && !state.cbtcEmer.restored);
+
+            // 速度碼丟失或 RM 模式下不再有橘條
+            let limPct = (isCbtcLoss || isRMMode) ? 0 : (state.atpLimit / 140);
+            if (limPct > 1) limPct = 1;
             if (ui.rLim) ui.rLim.style.strokeDasharray = `${limPct * CIRCUMFERENCE} 1000`;
+
             let spdPct = Math.abs(kph) / 140; if (spdPct > 1) spdPct = 1;
             if (ui.rSpd) ui.rSpd.style.strokeDasharray = `${spdPct * CIRCUMFERENCE} 1000`;
             updateNextStopUI();
@@ -5546,13 +5841,23 @@
 
             let bcVal = (state.b / 8) * 4.5; if (state.b === 9) bcVal = 6.0;
             if (ui.bc) ui.bc.innerText = bcVal.toFixed(1);
-            if (ui.lim) ui.lim.innerText = Math.floor(state.atpLimit);
 
+            if (ui.lim) {
+                if (isRMMode) {
+                    ui.lim.innerText = "15";
+                } else if (isCbtcLoss) {
+                    ui.lim.innerText = "--";
+                } else {
+                    ui.lim.innerText = Math.floor(state.atpLimit);
+                }
+            }
 
-
-            // 更新控制模式 (ATO / CM)
+            // 更新控制模式 (ATO / CM / RM)
             if (ui.mode) {
-                if (state.isATO) {
+                if (isRMMode) {
+                    ui.mode.innerText = "RM";
+                    ui.mode.style.color = "var(--color-atp)";
+                } else if (state.isATO) {
                     ui.mode.innerText = "ATO";
                     ui.mode.style.color = "var(--color-ato)";
                 } else {
@@ -5647,6 +5952,25 @@
                     isWarn = true;
                     parts.push(`⛔ 列車已停妥 ⛔\n請按 [Backspace] 聯繫行控中心回報防護無線發報`);
                 }
+            } else if (state.cbtcEmer && state.cbtcEmer.triggered && !state.cbtcEmer.restored) {
+                if (state.cbtcEmer.communicating) {
+                    isCall = true;
+                    parts.push(`📞 行控中心通話處置中...\n回報速度碼丟失: ${Math.ceil(state.cbtcEmer.occTimer)} 秒`);
+                } else if (state.cbtcEmer.settingRM) {
+                    isCall = true;
+                    parts.push(`📞 行控指令處置中...\n設定 RM 手動駕駛模式: ${Math.ceil(state.cbtcEmer.settingRMTimer)} 秒`);
+                } else if (state.cbtcEmer.restoring) {
+                    isCall = true;
+                    parts.push(`📞 系統正在重設速度碼及切換 ATO 模式: ${Math.ceil(state.cbtcEmer.restoreTimer)} 秒...`);
+                } else if (!state.cbtcEmer.rmReady && (state.v === 0 || Math.abs(state.v) <= 0.05 || state.cbtcEmer.stopped)) {
+                    isWarn = true;
+                    parts.push(`⛔ 列車已停妥 ⛔\n請按 [Backspace] 聯繫行控中心【回報速度碼丟失】`);
+                }
+            }
+
+            if (state.passengerEmer && state.passengerEmer.triggered && !state.passengerEmer.reported) {
+                isWarn = true;
+                parts.push(`⚠️ 旅客緊急狀況通報！(剩餘通報時間: ${Math.ceil(state.passengerEmer.timer)} 秒)\n請按 [Backspace] 聯繫行控中心【回報旅客緊急狀況】`);
             }
 
             // 2. 系統暫時/常規提示訊息
@@ -5762,7 +6086,7 @@
                         if (state.isATO && targetB > 0) {
                             disengageATO();
                         }
-                        if (targetB === 0 && !state.isATO && !state.manualRequested) {
+                        if (targetB === 0 && !state.isATO && !state.manualRequested && !state.isRM && (!state.cbtcEmer || !state.cbtcEmer.rmReady || state.cbtcEmer.restored)) {
                             if (Math.abs(state.v) < 0.05) {
                                 state.isATO = true;
                                 state.atoManualDisengaged = false;
@@ -5810,7 +6134,7 @@
                 if (state.isATO && nextB > 0) {
                     disengageATO();
                 }
-                if (nextB === 0 && !state.isATO && !state.manualRequested) {
+                if (nextB === 0 && !state.isATO && !state.manualRequested && !state.isRM && (!state.cbtcEmer || !state.cbtcEmer.rmReady || state.cbtcEmer.restored)) {
                     if (Math.abs(state.v) < 0.05) {
                         state.isATO = true;
                         state.atoManualDisengaged = false;
@@ -5933,6 +6257,7 @@
         window.onload = () => {
             if (!renderer || !scene) init3D();
         };
+
     </script>
 </body>
 
