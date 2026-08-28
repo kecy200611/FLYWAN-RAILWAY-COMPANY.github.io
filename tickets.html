@@ -4,6 +4,88 @@
   <meta charset="UTF-8">
   <title>票務資訊｜飛灣鐵路公司</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    /* 主題色彩設定 */
+    .theme-pink { --theme-accent: #e83e8c; --theme-bg: #fff0f5; }
+    .theme-green { --theme-accent: #28a745; --theme-bg: #eafaf1; }
+    .theme-blue { --theme-accent: #007bff; --theme-bg: #e7f1ff; }
+    .theme-black { --theme-accent: #343a40; --theme-bg: #e9ecef; }
+    .theme-gold { --theme-accent: #d4af37; --theme-bg: #fffdf0; }
+
+    #personal-ticket-section.theme-pink .card,
+    #personal-ticket-section.theme-green .card,
+    #personal-ticket-section.theme-blue .card,
+    #personal-ticket-section.theme-black .card,
+    #personal-ticket-section.theme-gold .card {
+      border-top: 4px solid var(--theme-accent);
+      background-color: var(--theme-bg);
+    }
+
+    /* 2+2 商務艙座位配置 (12排) */
+    .seat-grid-container {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr) 24px repeat(2, 1fr);
+      gap: 6px;
+      max-height: 220px;
+      overflow-y: auto;
+      background: #f8fafc;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      margin-top: 8px;
+    }
+    .seat-btn {
+      padding: 6px 0;
+      font-size: 12px;
+      border: 1px solid #94a3b8;
+      background: #ffffff;
+      border-radius: 4px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .seat-btn.selected {
+      background: #123b72;
+      color: #fff;
+      border-color: #123b72;
+    }
+    .seat-btn.occupied {
+      background: #e2e8f0;
+      color: #94a3b8;
+      cursor: not-allowed;
+      border-color: #cbd5e1;
+    }
+    .aisle-label {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: #64748b;
+    }
+    .theme-selector-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding: 8px 12px;
+      background: #fff;
+      border-radius: 6px;
+      border: 1px solid #e2e8f0;
+    }
+    .station-select-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .station-info-banner {
+      background: #e2e8f0;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #1e293b;
+      margin-bottom: 12px;
+    }
+  </style>
 </head>
 <body>
 <header class="site-header">
@@ -22,6 +104,7 @@
       <a href="extras.html">其他資料</a>
       <a href="contact.html">聯絡我們</a>
     </nav>
+  </div>
 </header>
 
 <main class="container">
@@ -38,6 +121,22 @@
     </article>
 
     <div id="user-dashboard" style="display: none;">
+      <!-- 主題切換與登入天數列 -->
+      <div class="theme-selector-bar">
+        <span id="streak-counter" style="font-size: 13px; font-weight: bold; color: #123b72;">連續登入：1 天</span>
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 6px;">
+          <label style="font-size: 13px; font-weight: bold;">系統主題色：</label>
+          <select id="theme-dropdown" class="login-input" style="padding: 4px 8px; width: auto; font-size: 13px;">
+            <option value="default">原色 (預設)</option>
+            <option value="theme-pink" id="opt-pink" disabled>粉色 (需持有母親節套票)</option>
+            <option value="theme-green" id="opt-green" disabled>綠色 (連續登入 3 天解鎖)</option>
+            <option value="theme-blue" id="opt-blue" disabled>藍色 (連續登入 5 天解鎖)</option>
+            <option value="theme-black" id="opt-black" disabled>黑色 (連續登入 7 天解鎖)</option>
+            <option value="theme-gold" id="opt-gold" disabled>金色 (連續登入 30 天解鎖)</option>
+          </select>
+        </div>
+      </div>
+
       <div class="grid grid-2">
         <article class="card">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -45,24 +144,85 @@
             <button id="do-logout-btn" class="refund-btn">登出</button>
           </div>
           
-          <h4 style="color: #1b4676; margin-bottom: 12px;">購買單程票</h4>
-          <label style="display: block; margin-bottom: 8px; font-weight: bold; color: #294c72;">購買里程 (公里)：</label>
-          <input type="number" id="ticket-distance" class="login-input" min="1" value="10">
+          <h4 style="color: #1b4676; margin-bottom: 12px;">線上購票與兌換</h4>
           
-<p style="margin-bottom: 16px; color: #5c7088;">
-  試算票價：<strong id="ticket-price-calc" style="font-size: 24px;">0.2</strong> 飛灣幣
-</p>
-          <button id="do-buy-btn" class="sys-btn-primary" style="width: 100%;">確認購買</button>
+          <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #294c72;">票券種類：</label>
+          <select id="ticket-type-select" class="login-input" style="margin-bottom: 12px;">
+            <option value="single">一般單程票</option>
+            <option value="business">快速列車商務艙票 (含特急券、2+2對號座)</option>
+            <option value="pass_1">1日定期票 (0.50 飛灣幣)</option>
+            <option value="pass_2">2日定期票 (0.95 飛灣幣)</option>
+            <option value="pass_3">3日定期票 (1.35 飛灣幣)</option>
+            <option value="pass_5">5日定期票 (2.10 飛灣幣)</option>
+            <option value="pass_7">7日定期票 (2.70 飛灣幣)</option>
+            <option value="pass_30">30日定期票 (9.00 飛灣幣)</option>
+            <option value="luggage_check">行李託運票 (0.08 飛灣幣)</option>
+            <option value="bicycle">自行車票 (0.15 飛灣幣)</option>
+            <option value="large_luggage">大件行李票 (0.05 飛灣幣)</option>
+            <option value="mothers_day">母親節套票 (0.50 飛灣幣)</option>
+          </select>
+
+          <!-- 起訖站選擇（單程票與商務艙使用） -->
+          <div id="od-group">
+            <div class="station-select-group">
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #294c72;">起點站：</label>
+                <select id="start-station-select" class="login-input"></select>
+              </div>
+              <div>
+                <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #294c72;">訖點站：</label>
+                <select id="end-station-select" class="login-input"></select>
+              </div>
+            </div>
+            <div id="od-info-banner" class="station-info-banner">搭乘區間里程：0.0 公里</div>
+          </div>
+
+          <!-- 時刻表車次選擇（由同目錄 CSV 自動非同步載入） -->
+          <div id="train-trip-group" style="margin-bottom: 12px;">
+            <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #294c72;">搭乘車次 (讀取時刻表)：</label>
+            <select id="trip-select" class="login-input">
+              <option value="">載入時刻表中...</option>
+            </select>
+          </div>
+
+          <!-- 商務艙專屬折抵與劃位區塊 -->
+          <div id="business-options-group" style="display: none; margin-top: 10px;">
+            <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #294c72;">飛灣會員與機票優惠兌換：</label>
+            <select id="business-membership-select" class="login-input" style="margin-bottom: 12px;">
+              <option value="normal">一般旅客 (全額票價)</option>
+              <option value="platinum">飛灣集團白金卡 (每日免費領取)</option>
+              <option value="black_air">黑卡 + 當日飛灣航空商務艙機票 (免費兌換)</option>
+              <option value="blue_air">藍卡 + 當日飛灣航空商務艙機票 (享 8 折優惠)</option>
+              <option value="green_air">綠卡 + 當日飛灣航空商務艙機票 (享 95 折優惠)</option>
+            </select>
+
+            <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #294c72;">商務艙劃位方式：</label>
+            <div style="display: flex; gap: 12px; margin-bottom: 8px;">
+              <label><input type="radio" name="seat-method" value="auto" checked> 電腦自動劃位</label>
+              <label><input type="radio" name="seat-method" value="manual"> 自行選位 (22M車長/12排)</label>
+            </div>
+            
+            <div id="manual-seat-map" style="display: none; margin-bottom: 12px;">
+              <span style="font-size: 12px; color: #64748b;">選取座位（靠窗 A | 走道 B || 走道 C | 靠窗 D）：</span>
+              <div class="seat-grid-container" id="seat-layout"></div>
+              <p style="font-size: 13px; margin: 6px 0 0 0; color: #123b72;">已選座位：<strong id="selected-seat-label">尚未選擇</strong></p>
+            </div>
+          </div>
+          
+          <p style="margin-bottom: 16px; color: #5c7088;">
+            試算票價：<strong id="ticket-price-calc" style="font-size: 24px;">0.00</strong> 飛灣幣
+          </p>
+          <button id="do-buy-btn" class="sys-btn-primary" style="width: 100%;">確認購買 / 兌換</button>
         </article>
 
         <article class="card">
           <h3 style="margin-top: 0; color: #123b72;">我的車票</h3>
-          <div id="ticket-list-container" style="max-height: 350px; overflow-y: auto; padding-right: 8px;">
-            </div>
+          <div id="ticket-list-container" style="max-height: 350px; overflow-y: auto; padding-right: 8px;"></div>
         </article>
       </div>
     </div>
-<div id="modal-ticket-detail" class="sys-modal">
+
+    <div id="modal-ticket-detail" class="sys-modal">
       <div class="sys-modal-content">
         <h2 id="detail-ticket-name" style="color: #123b72; margin-top: 0; margin-bottom: 4px;">車票名稱</h2>
         <p id="detail-ticket-info" style="color: #5c7088; margin-top: 0; margin-bottom: 8px; font-weight: bold;"></p>
@@ -82,6 +242,8 @@
       </div>
     </div>
   </section>
+
+  <!-- 既有票務資訊完整保留 -->
   <section>
     <h1>票務資訊</h1>
     <p class="lead">
@@ -162,49 +324,466 @@
     <p>本網站及「飛灣鐵路公司」為虛構設定，僅供娛樂與創作使用。</p>
   </div>
 </footer>
+
 <script>
-  // 狀態與資料
+  // 里程表（排除車輛基地）
+  const STATIONS_DATA = [
+    { code: 'FR01', name: '飛灣工業區', km: 0.0 },
+    { code: 'FR02', name: '飛灣港', km: 7.3 },
+    { code: 'FR03', name: '物流中心', km: 8.5 },
+    { code: 'FR04', name: '飛灣郵輪港', km: 9.7 },
+    { code: 'FR05', name: '濱江商務區', km: 16.9 },
+    { code: 'FR06', name: '市民廣場', km: 18.4 },
+    { code: 'FR07', name: '文化中心', km: 19.7 },
+    { code: 'FR08', name: '飛灣新站', km: 21.6 },
+    { code: 'FR09', name: '科創園', km: 23.9 },
+    { code: 'FR10', name: '飛灣學區', km: 25.1 },
+    { code: 'FR11', name: '飛灣大道', km: 26.8 },
+    { code: 'FR12', name: '飛灣公園', km: 28.4 },
+    { code: 'FR13', name: '錦湖', km: 29.8 },
+    { code: 'FR14', name: '鷺島', km: 30.3 },
+    { code: 'FR15', name: '空港新城', km: 33.1 },
+    { code: 'FR16', name: '飛灣機場', km: 38.0 },
+    { code: 'FR17', name: '翡翠花園', km: 43.2 },
+    { code: 'FR18', name: '紫荊苑', km: 46.4 },
+    { code: 'FR19', name: '御景新村', km: 54.8 },
+    { code: 'FR20', name: '自然保育中心', km: 56.2 },
+    { code: 'FR21', name: '綾路北站', km: 58.0 },
+    { code: 'FR22', name: '全京大道', km: 59.2 }
+  ];
+
+  // 快速列車特定停靠站
+  const RAPID_STATION_NAMES = ['飛灣工業區', '飛灣郵輪港', '飛灣新站', '飛灣公園', '飛灣機場', '綾路北站'];
+
+  const TOTAL_ROWS = 12;
+  const SEAT_LETTERS = ['A', 'B', 'C', 'D'];
+
   let currentUser = JSON.parse(localStorage.getItem('flywan_user'));
   let myTickets = JSON.parse(localStorage.getItem('flywan_tickets') || '[]');
+  let timetableShang = null;
+  let timetableXia = null;
+  let chosenSeat = null;
 
-  // 畫面元素
+  // DOM 元素
   const loginCard = document.getElementById('login-card');
   const userDashboard = document.getElementById('user-dashboard');
   const welcomeMsg = document.getElementById('welcome-msg');
-  const distanceInput = document.getElementById('ticket-distance');
+  const ticketTypeSelect = document.getElementById('ticket-type-select');
+  const odGroup = document.getElementById('od-group');
+  const startStationSelect = document.getElementById('start-station-select');
+  const endStationSelect = document.getElementById('end-station-select');
+  const odInfoBanner = document.getElementById('od-info-banner');
+  const trainTripGroup = document.getElementById('train-trip-group');
+  const tripSelect = document.getElementById('trip-select');
   const priceCalc = document.getElementById('ticket-price-calc');
   const ticketListContainer = document.getElementById('ticket-list-container');
+  const businessOptionsGroup = document.getElementById('business-options-group');
+  const businessMemberSelect = document.getElementById('business-membership-select');
+  const manualSeatMap = document.getElementById('manual-seat-map');
+  const seatLayout = document.getElementById('seat-layout');
+  const selectedSeatLabel = document.getElementById('selected-seat-label');
+  const themeDropdown = document.getElementById('theme-dropdown');
+  const streakCounter = document.getElementById('streak-counter');
 
-  // 【核心功能】自動檢查並刪除過期車票
+  function initStationOptions() {
+    startStationSelect.innerHTML = '';
+    endStationSelect.innerHTML = '';
+    STATIONS_DATA.forEach(st => {
+      startStationSelect.add(new Option(`${st.code} ${st.name}`, st.name));
+      endStationSelect.add(new Option(`${st.code} ${st.name}`, st.name));
+    });
+    startStationSelect.value = '飛灣工業區';
+    endStationSelect.value = '飛灣機場';
+  }
+
+  // 時間解析（處理 OuDia 格式）
+  function parseOuDiaTime(str) {
+    if (!str) return null;
+    const raw = str.replace(/[^\d]/g, '');
+    if (!raw || raw.length < 5 || raw.length > 6) return null;
+    const s = raw.padStart(6, '0');
+    const h = parseInt(s.substr(0, 2), 10);
+    const m = parseInt(s.substr(2, 2), 10);
+    const sec = parseInt(s.substr(4, 2), 10);
+    return {
+      totalSec: h * 3600 + m * 60 + sec,
+      displayStr: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+    };
+  }
+
+  // 解析 OuDia CSV 時刻表（含 BOM 清除）
+  function parseOuDiaCSV(csvText) {
+    if (!csvText) return [];
+    const cleanCsv = csvText.replace(/^\uFEFF/, '').trim();
+    const lines = cleanCsv.split(/\r?\n/);
+    
+    let headerRowIdx = -1, typeRowIdx = -1, unyouRowIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].includes('列車番号')) headerRowIdx = i;
+      if (lines[i].includes('列車種別')) typeRowIdx = i;
+      if (lines[i].includes('運用番号')) unyouRowIdx = i;
+      if (headerRowIdx !== -1 && typeRowIdx !== -1 && unyouRowIdx !== -1) break;
+    }
+    if (headerRowIdx === -1) return [];
+
+    const headerCols = lines[headerRowIdx].split(',');
+    const typeCols = typeRowIdx !== -1 ? lines[typeRowIdx].split(',') : [];
+    const unyouCols = unyouRowIdx !== -1 ? lines[unyouRowIdx].split(',') : [];
+    const trainsMap = {};
+
+    headerCols.forEach((cell, idx) => {
+      const val = cell.trim();
+      if (val && idx >= 2) {
+        const typeStr = typeCols[idx] ? typeCols[idx].trim() : '普通';
+        const unyouStr = unyouCols[idx] ? unyouCols[idx].trim() : '';
+        trainsMap[idx] = {
+          id: val,
+          type: typeStr,
+          unyou: unyouStr,
+          stops: {}
+        };
+      }
+    });
+
+    const startRow = Math.max(headerRowIdx, typeRowIdx, unyouRowIdx) + 1;
+    for (let i = startRow; i < lines.length; i++) {
+      const row = lines[i].split(',');
+      if (row.length < 2) continue;
+      const stName = row[0].trim();
+      const actionType = row[1] ? row[1].trim() : '';
+      if (!stName) continue;
+
+      Object.keys(trainsMap).forEach(colIdx => {
+        const cellVal = row[colIdx] ? row[colIdx].trim() : '';
+        if (cellVal && cellVal !== 'ﾚ' && cellVal !== '||') {
+          const parsed = parseOuDiaTime(cellVal);
+          if (parsed) {
+            if (!trainsMap[colIdx].stops[stName] || actionType === '発') {
+              trainsMap[colIdx].stops[stName] = parsed;
+            }
+          }
+        }
+      });
+    }
+
+    return Object.values(trainsMap);
+  }
+
+  // 雙通道取得 CSV 文字：優先 Fetch，若遇 file:// CORS 則提示
+  async function fetchCsvContent(filename) {
+    const candidatePaths = [
+      encodeURI(filename),
+      filename,
+      `./${encodeURI(filename)}`,
+      `./${filename}`
+    ];
+    for (const p of candidatePaths) {
+      try {
+        const res = await fetch(p);
+        if (res.ok) {
+          const text = await res.text();
+          if (text && text.includes('列車番号')) return text;
+        }
+      } catch (e) {
+        // 跨域或 file:/// 封鎖
+      }
+    }
+    return null;
+  }
+
+  // 自動非同步讀取 CSV
+  async function loadTimetables() {
+    try {
+      const [shangText, xiaText] = await Promise.all([
+        fetchCsvContent('上.csv'),
+        fetchCsvContent('下.csv')
+      ]);
+
+      if (shangText) timetableShang = parseOuDiaCSV(shangText);
+      if (xiaText) timetableXia = parseOuDiaCSV(xiaText);
+
+      // 若兩者皆因 file:/// 限制無法讀取，提供友善提示
+      if (!timetableShang && !timetableXia && window.location.protocol === 'file:') {
+        console.warn('瀏覽器 file:// 協定安全性限制已阻擋本機 fetch()。建議透過本機 Web Server (如 VSCode Live Server) 開啟。');
+      }
+
+      refreshScheduleAndPrice();
+    } catch (err) {
+      console.warn('時刻表讀取發生異常', err);
+      refreshScheduleAndPrice();
+    }
+  }
+
+  // 依據選擇的起訖站與票種，動態過濾時刻表
+  function refreshScheduleAndPrice() {
+    const ticketType = ticketTypeSelect.value;
+    const isPointToPoint = (ticketType === 'single' || ticketType === 'business');
+
+    odGroup.style.display = isPointToPoint ? 'block' : 'none';
+    trainTripGroup.style.display = isPointToPoint ? 'block' : 'none';
+    businessOptionsGroup.style.display = (ticketType === 'business') ? 'block' : 'none';
+
+    if (!isPointToPoint) {
+      calculateCurrentPrice();
+      return;
+    }
+
+    const startName = startStationSelect.value;
+    const endName = endStationSelect.value;
+    const startObj = STATIONS_DATA.find(s => s.name === startName);
+    const endObj = STATIONS_DATA.find(s => s.name === endName);
+
+    if (!startObj || !endObj || startName === endName) {
+      odInfoBanner.textContent = '❌ 起訖站不可相同，請選擇合理的乘車區間。';
+      odInfoBanner.style.color = '#c53030';
+      tripSelect.innerHTML = '<option value="">起訖站無效</option>';
+      calculateCurrentPrice();
+      return;
+    }
+
+    const distance = Math.abs(endObj.km - startObj.km);
+    const isDown = (endObj.km > startObj.km); // 下行：工業區往全京方向
+
+    if (ticketType === 'business') {
+      const startIsRapid = RAPID_STATION_NAMES.includes(startName);
+      const endIsRapid = RAPID_STATION_NAMES.includes(endName);
+      if (!startIsRapid || !endIsRapid) {
+        odInfoBanner.innerHTML = `⚠️ <strong>起訖站不合理</strong>：快速列車/商務艙僅停靠【${RAPID_STATION_NAMES.join('、')}】。`;
+        odInfoBanner.style.color = '#b7791f';
+        tripSelect.innerHTML = '<option value="">非快速列車停靠站無法劃位</option>';
+        calculateCurrentPrice();
+        return;
+      }
+    }
+
+    odInfoBanner.style.color = '#1e293b';
+    odInfoBanner.textContent = `行駛方向：${isDown ? '下行 (往全京方向)' : '上行 (往工業區方向)'} ｜ 乘車里程：${distance.toFixed(1)} 公里`;
+
+    const activeTimetable = isDown ? timetableXia : timetableShang;
+    tripSelect.innerHTML = '';
+
+    if (!activeTimetable || activeTimetable.length === 0) {
+      if (window.location.protocol === 'file:') {
+        tripSelect.innerHTML = '<option value="">請使用 Web 伺服器 (如 Live Server) 開啟以自動讀取 CSV</option>';
+      } else {
+        tripSelect.innerHTML = '<option value="">時刻表載入中，請稍候...</option>';
+      }
+    } else {
+      const validTrains = activeTimetable.filter(train => {
+        if (train.type === '回送') return false;
+        if (ticketType === 'business' && !train.type.includes('快速')) return false;
+
+        const sInfo = train.stops[startName];
+        const eInfo = train.stops[endName];
+        if (!sInfo || !eInfo) return false;
+
+        let startSec = sInfo.totalSec;
+        let endSec = eInfo.totalSec;
+        if (endSec < startSec) endSec += 86400;
+        return endSec >= startSec;
+      });
+
+      if (validTrains.length === 0) {
+        tripSelect.innerHTML = `<option value="">查無直達${ticketType === 'business' ? '快速' : ''}車次</option>`;
+      } else {
+        validTrains.forEach(train => {
+          const sTime = train.stops[startName].displayStr;
+          const eTime = train.stops[endName].displayStr;
+          const opt = new Option(`${train.id}次 (${train.type}) - ${startName} ${sTime} 發 ➔ ${endName} ${eTime} 到`, train.id);
+          tripSelect.add(opt);
+        });
+      }
+    }
+
+    calculateCurrentPrice();
+  }
+
+  function calculateCurrentPrice() {
+    const type = ticketTypeSelect.value;
+    const startName = startStationSelect.value;
+    const endName = endStationSelect.value;
+    const startObj = STATIONS_DATA.find(s => s.name === startName);
+    const endObj = STATIONS_DATA.find(s => s.name === endName);
+    const dist = (startObj && endObj && startName !== endName) ? Math.abs(endObj.km - startObj.km) : 0;
+
+    let price = 0;
+    if (type === 'single') {
+      price = (dist > 0) ? (0.1 + (dist * 0.01)) : 0;
+    } else if (type === 'business') {
+      const isStartRapid = RAPID_STATION_NAMES.includes(startName);
+      const isEndRapid = RAPID_STATION_NAMES.includes(endName);
+      if (dist > 0 && isStartRapid && isEndRapid) {
+        const baseFullPrice = 0.3 + (dist * 0.025);
+        const discountMode = businessMemberSelect.value;
+        if (discountMode === 'platinum' || discountMode === 'black_air') {
+          price = 0.00;
+        } else if (discountMode === 'blue_air') {
+          price = baseFullPrice * 0.8;
+        } else if (discountMode === 'green_air') {
+          price = baseFullPrice * 0.95;
+        } else {
+          price = baseFullPrice;
+        }
+      } else {
+        price = 0.00;
+      }
+    } else if (type === 'pass_1') price = 0.50;
+    else if (type === 'pass_2') price = 0.95;
+    else if (type === 'pass_3') price = 1.35;
+    else if (type === 'pass_5') price = 2.10;
+    else if (type === 'pass_7') price = 2.70;
+    else if (type === 'pass_30') price = 9.00;
+    else if (type === 'luggage_check') price = 0.08;
+    else if (type === 'bicycle') price = 0.15;
+    else if (type === 'large_luggage') price = 0.05;
+    else if (type === 'mothers_day') price = 0.50;
+
+    const finalPrice = parseFloat(price.toFixed(2));
+    priceCalc.textContent = finalPrice.toFixed(2);
+    return finalPrice;
+  }
+
+  function buildSeatGrid() {
+    seatLayout.innerHTML = '';
+    chosenSeat = null;
+    selectedSeatLabel.textContent = '尚未選擇';
+
+    for (let r = 1; r <= TOTAL_ROWS; r++) {
+      ['A', 'B'].forEach(col => {
+        const btn = document.createElement('button');
+        const seatId = `${r}${col}`;
+        btn.type = 'button';
+        btn.className = 'seat-btn';
+        btn.textContent = seatId;
+        btn.onclick = () => selectSeat(seatId, btn);
+        seatLayout.appendChild(btn);
+      });
+
+      const aisle = document.createElement('div');
+      aisle.className = 'aisle-label';
+      aisle.textContent = `${r}`;
+      seatLayout.appendChild(aisle);
+
+      ['C', 'D'].forEach(col => {
+        const btn = document.createElement('button');
+        const seatId = `${r}${col}`;
+        btn.type = 'button';
+        btn.className = 'seat-btn';
+        btn.textContent = seatId;
+        btn.onclick = () => selectSeat(seatId, btn);
+        seatLayout.appendChild(btn);
+      });
+    }
+  }
+
+  function selectSeat(seatId, btn) {
+    document.querySelectorAll('.seat-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    chosenSeat = seatId;
+    selectedSeatLabel.textContent = seatId;
+  }
+
+  function getRandomSeat() {
+    const r = Math.floor(Math.random() * TOTAL_ROWS) + 1;
+    const l = SEAT_LETTERS[Math.floor(Math.random() * SEAT_LETTERS.length)];
+    return `${r}${l}`;
+  }
+
   function checkAndRemoveExpiredTickets() {
     const now = Date.now();
-    // 篩選出尚未過期的車票 (如果沒有設定 expiryTime 則視為永久有效)
     const validTickets = myTickets.filter(ticket => !ticket.expiryTime || ticket.expiryTime > now);
-    
-    // 如果有車票被刪除了，更新資料庫
     if (validTickets.length !== myTickets.length) {
       myTickets = validTickets;
       localStorage.setItem('flywan_tickets', JSON.stringify(myTickets));
     }
   }
 
-  // 初始化畫面
-  function renderDashboard() {
-    // 每次渲染儀表板前，先自動剔除過期車票
-    checkAndRemoveExpiredTickets();
+  function updateLoginStreak(user) {
+    const today = new Date().toISOString().slice(0, 10);
+    if (!user.lastLoginDate) {
+      user.streak = 1;
+      user.lastLoginDate = today;
+    } else if (user.lastLoginDate !== today) {
+      const last = new Date(user.lastLoginDate);
+      const curr = new Date(today);
+      const diffDays = Math.round((curr - last) / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) {
+        user.streak = (user.streak || 1) + 1;
+      } else if (diffDays > 1) {
+        user.streak = 1;
+      }
+      user.lastLoginDate = today;
+    }
+    localStorage.setItem('flywan_user', JSON.stringify(user));
+    return user.streak || 1;
+  }
 
+  function updateThemePermissions() {
+    const streak = currentUser ? (currentUser.streak || 1) : 1;
+    streakCounter.textContent = `連續登入：${streak} 天`;
+
+    const hasMothersDay = myTickets.some(t => t.name.includes('母親節'));
+    document.getElementById('opt-pink').disabled = !hasMothersDay;
+    document.getElementById('opt-green').disabled = streak < 3;
+    document.getElementById('opt-blue').disabled = streak < 5;
+    document.getElementById('opt-black').disabled = streak < 7;
+    document.getElementById('opt-gold').disabled = streak < 30;
+
+    const savedTheme = localStorage.getItem('flywan_selected_theme') || 'default';
+    const opt = themeDropdown.querySelector(`option[value="${savedTheme}"]`);
+    if (opt && !opt.disabled) {
+      themeDropdown.value = savedTheme;
+      applyTheme(savedTheme);
+    } else {
+      themeDropdown.value = 'default';
+      applyTheme('default');
+    }
+  }
+
+  function applyTheme(themeClass) {
+    const section = document.getElementById('personal-ticket-section');
+    section.className = '';
+    if (themeClass !== 'default') {
+      section.classList.add(themeClass);
+    }
+  }
+
+  themeDropdown.addEventListener('change', (e) => {
+    const val = e.target.value;
+    localStorage.setItem('flywan_selected_theme', val);
+    applyTheme(val);
+  });
+
+  ticketTypeSelect.addEventListener('change', () => {
+    if (ticketTypeSelect.value === 'business') buildSeatGrid();
+    refreshScheduleAndPrice();
+  });
+  startStationSelect.addEventListener('change', refreshScheduleAndPrice);
+  endStationSelect.addEventListener('change', refreshScheduleAndPrice);
+  businessMemberSelect.addEventListener('change', calculateCurrentPrice);
+
+  document.querySelectorAll('input[name="seat-method"]').forEach(radio => {
+    radio.addEventListener('change', (e) => {
+      manualSeatMap.style.display = (e.target.value === 'manual') ? 'block' : 'none';
+    });
+  });
+
+  function renderDashboard() {
+    checkAndRemoveExpiredTickets();
     if (currentUser) {
       loginCard.style.display = 'none';
       userDashboard.style.display = 'block';
       welcomeMsg.textContent = '歡迎，' + currentUser.name;
+      updateLoginStreak(currentUser);
+      updateThemePermissions();
       renderTickets();
+      refreshScheduleAndPrice();
     } else {
       loginCard.style.display = 'block';
       userDashboard.style.display = 'none';
     }
   }
 
-  // 登入
   document.getElementById('do-login-btn').addEventListener('click', () => {
     const idVal = document.getElementById('login-id').value.trim();
     if (idVal) {
@@ -216,7 +795,6 @@
     }
   });
 
-  // 登出
   document.getElementById('do-logout-btn').addEventListener('click', () => {
     localStorage.removeItem('flywan_user');
     currentUser = null;
@@ -224,55 +802,94 @@
     renderDashboard();
   });
 
-  // 里程試算
-  distanceInput.addEventListener('input', () => {
-    const dist = parseFloat(distanceInput.value) || 0;
-    const price = 0.1 + (dist * 0.01);
-    priceCalc.textContent = parseFloat(price.toFixed(2));
-  });
-
-  // 購買車票（在此處加上有效期限設定）
   document.getElementById('do-buy-btn').addEventListener('click', () => {
-    const dist = parseFloat(distanceInput.value) || 0;
-    const price = parseFloat((0.1 + (dist * 0.01)).toFixed(2));
-    
+    const type = ticketTypeSelect.value;
+    const startName = startStationSelect.value;
+    const endName = endStationSelect.value;
+    const startObj = STATIONS_DATA.find(s => s.name === startName);
+    const endObj = STATIONS_DATA.find(s => s.name === endName);
+    const dist = (startObj && endObj) ? Math.abs(endObj.km - startObj.km) : 0;
+    const trainTrip = tripSelect.value;
+
+    const isPointToPoint = (type === 'single' || type === 'business');
+    if (isPointToPoint) {
+      if (startName === endName) {
+        alert('起訖站不能相同！');
+        return;
+      }
+      if (type === 'business') {
+        if (!RAPID_STATION_NAMES.includes(startName) || !RAPID_STATION_NAMES.includes(endName)) {
+          alert('快速列車/商務艙僅停靠特定車站（工業區、郵輪港、飛灣新站、公園、機場、綾路北站），無法預訂此區間！');
+          return;
+        }
+      }
+      if (!trainTrip) {
+        alert('請選擇有效的搭乘車次！');
+        return;
+      }
+    }
+
+    const price = calculateCurrentPrice();
     const purchaseTime = Date.now();
-    // 設定車票有效期：這裡以「單程票 24 小時後過期」為例 (24小時 * 60分 * 60秒 * 1000毫秒)
-    const duration = 24 * 60 * 60 * 1000; 
+    let duration = 24 * 60 * 60 * 1000;
+    let typeName = '單程票';
+    let displayName = '';
+
+    if (type === 'single') {
+      typeName = '一般單程票';
+      displayName = `單程票 (${startName} → ${endName}, ${dist.toFixed(1)}km, ${trainTrip}次)`;
+    } else if (type === 'business') {
+      typeName = '快速列車商務艙票';
+      const method = document.querySelector('input[name="seat-method"]:checked').value;
+      let seat = '';
+      if (method === 'manual') {
+        if (!chosenSeat) {
+          alert('請在座位表上選擇您的座位！');
+          return;
+        }
+        seat = chosenSeat;
+      } else {
+        seat = getRandomSeat();
+      }
+      displayName = `快速列車商務艙 (${startName} → ${endName}, ${dist.toFixed(1)}km, ${trainTrip}次, 座位: ${seat})`;
+    } else if (type.startsWith('pass_')) {
+      const days = parseInt(type.replace('pass_', ''), 10);
+      typeName = `${days}日定期票`;
+      displayName = `飛灣鐵路 ${days}日定期票 (全線自由搭乘)`;
+      duration = days * 24 * 60 * 60 * 1000;
+    } else if (type === 'luggage_check') {
+      typeName = '行李託運票';
+      displayName = '行李託運票 (單件託運憑證)';
+    } else if (type === 'bicycle') {
+      typeName = '自行車票';
+      displayName = '自行車乘車票 (單次乘車)';
+    } else if (type === 'large_luggage') {
+      typeName = '大件行李票';
+      displayName = '大件行李乘車票 (專屬置放)';
+    } else if (type === 'mothers_day') {
+      typeName = '母親節套票';
+      displayName = '母親節特惠套票';
+      duration = 30 * 24 * 60 * 60 * 1000;
+    }
 
     const newTicket = {
       id: purchaseTime,
-      type: '單程票',
-      name: `單程票 (${dist}公里)`,
+      type: typeName,
+      name: displayName,
       price: price,
       date: new Date(purchaseTime).toLocaleString(),
-      expiryTime: purchaseTime + duration // 紀錄過期的時間戳記
+      expiryTime: purchaseTime + duration
     };
 
     myTickets.unshift(newTicket);
     localStorage.setItem('flywan_tickets', JSON.stringify(myTickets));
     renderTickets();
-    alert('購票成功！');
+    updateThemePermissions();
+    alert('購票 / 兌換成功！');
   });
 
-  // 動態切換主題色
-  function updateTheme() {
-    const section = document.getElementById('personal-ticket-section');
-    const hasMothersDay = myTickets.some(ticket => ticket.name.includes('母親節'));
-    
-    if (hasMothersDay) {
-      section.classList.add('theme-pink');
-    } else {
-      section.classList.remove('theme-pink');
-    }
-  }
-
-  // 渲染車票與退票功能
   function renderTickets() {
     ticketListContainer.innerHTML = '';
-    
-    updateTheme(); 
-
     if (myTickets.length === 0) {
       ticketListContainer.innerHTML = '<p style="color:#5c7088;">目前沒有車票記錄。</p>';
       return;
@@ -282,7 +899,6 @@
       const div = document.createElement('div');
       div.className = 'ticket-item';
       
-      // 額外提示剩餘時間（可選，增加使用者體驗）
       let expiryNote = '';
       if (ticket.expiryTime) {
         const timeLeft = ticket.expiryTime - Date.now();
@@ -301,11 +917,8 @@
     });
   }
 
-  // 開啟車票詳細畫面
   window.openTicketDetail = function(id) {
-    // 開啟前再次確認該票是否過期
     checkAndRemoveExpiredTickets();
-    
     const ticket = myTickets.find(t => t.id === id);
     if (ticket) {
       document.getElementById('detail-ticket-name').textContent = ticket.name;
@@ -317,22 +930,23 @@
     }
   };
 
-  // 關閉彈窗功能
   window.closeModal = function(modalId) {
-    document.getElementById(modalId).classList.remove('remove'); // 修正原本寫法的 class 清除
     document.getElementById(modalId).classList.remove('active');
   };
 
-  // 手動退票
   window.doRefund = function(id) {
     if(confirm('確定要退還此車票嗎？')) {
       myTickets = myTickets.filter(t => t.id !== id);
       localStorage.setItem('flywan_tickets', JSON.stringify(myTickets));
       renderTickets();
+      updateThemePermissions();
     }
   };
 
-  // 執行初始化
+  // 初始掛載執行
+  initStationOptions();
+  buildSeatGrid();
+  loadTimetables();
   renderDashboard();
 </script>
 </body>
