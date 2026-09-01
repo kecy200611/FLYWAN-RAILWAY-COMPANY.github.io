@@ -162,6 +162,12 @@
             <option value="mothers_day">母親節套票 (0.50 飛灣幣)</option>
           </select>
 
+          <!-- 商務艙專屬：乘車日期選擇 (開放 60 天訂位) -->
+          <div id="business-date-group" style="display: none; margin-bottom: 12px;">
+            <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #294c72;">商務艙預約乘車日期 (開放 60 天訂位)：</label>
+            <select id="business-date-select" class="login-input"></select>
+          </div>
+
           <!-- 起訖站選擇（單程票與商務艙使用） -->
           <div id="od-group">
             <div class="station-select-group">
@@ -177,7 +183,7 @@
             <div id="od-info-banner" class="station-info-banner">搭乘區間里程：0.0 公里</div>
           </div>
 
-          <!-- 時刻表車次選擇（由同目錄 CSV 自動非同步載入） -->
+          <!-- 時刻表車次選擇 -->
           <div id="train-trip-group" style="margin-bottom: 12px;">
             <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #294c72;">搭乘車次 (讀取時刻表)：</label>
             <select id="trip-select" class="login-input">
@@ -243,7 +249,6 @@
     </div>
   </section>
 
-  <!-- 既有票務資訊完整保留 -->
   <section>
     <h1>票務資訊</h1>
     <p class="lead">
@@ -313,7 +318,7 @@
         憑飛灣集團會員白金卡的旅客每日可免費領取一張商務票，<br>黑卡、藍卡、綠卡的旅客可憑當日出發的飛灣航空商務艙機票兌換商務票，黑卡的旅客可免費兌換，藍卡的旅客可享8折優惠，綠卡的旅客可享95折優惠。
       </p>
       <p>
-        商務車廂為指定車次對號座，請旅客注意搭乘。
+        商務車廂為指定車次對號座，請旅客注意搭乘。每次開放 60 天預約訂位。
       </p>
     </article>
   </section>
@@ -369,6 +374,8 @@
   const userDashboard = document.getElementById('user-dashboard');
   const welcomeMsg = document.getElementById('welcome-msg');
   const ticketTypeSelect = document.getElementById('ticket-type-select');
+  const businessDateGroup = document.getElementById('business-date-group');
+  const businessDateSelect = document.getElementById('business-date-select');
   const odGroup = document.getElementById('od-group');
   const startStationSelect = document.getElementById('start-station-select');
   const endStationSelect = document.getElementById('end-station-select');
@@ -384,6 +391,73 @@
   const selectedSeatLabel = document.getElementById('selected-seat-label');
   const themeDropdown = document.getElementById('theme-dropdown');
   const streakCounter = document.getElementById('streak-counter');
+
+  // =================== 飛灣新曆法換算模組 ===================
+  // 規則：實際日曆365天(平年)，每5天一週(週休一日)，每6週一個月(30天)，每年12個月(共360天)。
+  // 年初增加假期週5天(平年5天，閏年增加1天為6天)。
+  function isLeapYear(year) {
+    return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+  }
+
+  function getDayOfYear(date) {
+    const start = new Date(date.getFullYear(), 0, 1);
+    const diff = date - start;
+    const oneDay = 1000 * 60 * 60 * 24;
+    return Math.floor(diff / oneDay) + 1; // 1-based (1 ~ 365/366)
+  }
+
+  function convertGregorianToFlywan(date) {
+    const year = date.getFullYear();
+    const leap = isLeapYear(year);
+    const holidayDays = leap ? 6 : 5;
+    const dayOfYear = getDayOfYear(date);
+
+    const weekdayNames = ['週一', '週二', '週三', '週四', '休息日'];
+
+    if (dayOfYear <= holidayDays) {
+      const weekdayIdx = (dayOfYear - 1) % 5;
+      const isRest = (weekdayIdx === 4);
+      return {
+        year: year,
+        text: `${year}年 年初假期週 第${dayOfYear}天 (${weekdayNames[weekdayIdx]}${isRest ? ' [休]' : ''})`,
+        short: `${year} 假期週 D${dayOfYear}`
+      };
+    }
+
+    const regDay = dayOfYear - holidayDays; // 1 ~ 360
+    const month = Math.floor((regDay - 1) / 30) + 1; // 1 ~ 12
+    const dayInMonth = ((regDay - 1) % 30) + 1; // 1 ~ 30
+    const weekInMonth = Math.floor((dayInMonth - 1) / 5) + 1; // 1 ~ 6
+    const dayInWeek = ((dayInMonth - 1) % 5) + 1; // 1 ~ 5
+    const weekdayIdx = dayInWeek - 1;
+    const isRest = (weekdayIdx === 4);
+
+    return {
+      year: year,
+      month: month,
+      week: weekInMonth,
+      day: dayInMonth,
+      weekday: weekdayNames[weekdayIdx],
+      text: `${year}年 第${month}月 第${weekInMonth}週 第${dayInWeek}天 (${weekdayNames[weekdayIdx]}${isRest ? ' [休]' : ''}) - 該月第${dayInMonth}日`,
+      short: `${year}年${month}月${dayInMonth}日 (W${weekInMonth}-D${dayInWeek})`
+    };
+  }
+
+  function initBusinessDateOptions() {
+    businessDateSelect.innerHTML = '';
+    const now = new Date();
+    // 開放未來 60 天訂位
+    for (let i = 0; i < 60; i++) {
+      const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
+      const customCal = convertGregorianToFlywan(targetDate);
+      const gregStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth()+1).padStart(2,'0')}-${String(targetDate.getDate()).padStart(2,'0')}`;
+      
+      const opt = document.createElement('option');
+      opt.value = `${gregStr} [${customCal.short}]`;
+      opt.textContent = `${customCal.text} (公曆 ${gregStr})`;
+      businessDateSelect.appendChild(opt);
+    }
+  }
 
   function initStationOptions() {
     startStationSelect.innerHTML = '';
@@ -469,7 +543,7 @@
     return Object.values(trainsMap);
   }
 
-  // 雙通道取得 CSV 文字：優先 Fetch，若遇 file:// CORS 則提示
+  // 雙通道取得 CSV 文字：優先 Fetch
   async function fetchCsvContent(filename) {
     const candidatePaths = [
       encodeURI(filename),
@@ -502,9 +576,8 @@
       if (shangText) timetableShang = parseOuDiaCSV(shangText);
       if (xiaText) timetableXia = parseOuDiaCSV(xiaText);
 
-      // 若兩者皆因 file:/// 限制無法讀取，提供友善提示
       if (!timetableShang && !timetableXia && window.location.protocol === 'file:') {
-        console.warn('瀏覽器 file:// 協定安全性限制已阻擋本機 fetch()。建議透過本機 Web Server (如 VSCode Live Server) 開啟。');
+        console.warn('瀏覽器 file:// 協定安全性限制已阻擋本機 fetch()。建議透過本機 Web Server 開啟。');
       }
 
       refreshScheduleAndPrice();
@@ -518,10 +591,14 @@
   function refreshScheduleAndPrice() {
     const ticketType = ticketTypeSelect.value;
     const isPointToPoint = (ticketType === 'single' || ticketType === 'business');
+    const isBusiness = (ticketType === 'business');
+
+    // 商務艙日期選擇切換（其他票種不顯示）
+    businessDateGroup.style.display = isBusiness ? 'block' : 'none';
 
     odGroup.style.display = isPointToPoint ? 'block' : 'none';
     trainTripGroup.style.display = isPointToPoint ? 'block' : 'none';
-    businessOptionsGroup.style.display = (ticketType === 'business') ? 'block' : 'none';
+    businessOptionsGroup.style.display = isBusiness ? 'block' : 'none';
 
     if (!isPointToPoint) {
       calculateCurrentPrice();
@@ -542,7 +619,7 @@
     }
 
     const distance = Math.abs(endObj.km - startObj.km);
-    const isDown = (endObj.km > startObj.km); // 下行：工業區往全京方向
+    const isDown = (endObj.km > startObj.km);
 
     if (ticketType === 'business') {
       const startIsRapid = RAPID_STATION_NAMES.includes(startName);
@@ -755,7 +832,10 @@
   });
 
   ticketTypeSelect.addEventListener('change', () => {
-    if (ticketTypeSelect.value === 'business') buildSeatGrid();
+    if (ticketTypeSelect.value === 'business') {
+      buildSeatGrid();
+      initBusinessDateOptions();
+    }
     refreshScheduleAndPrice();
   });
   startStationSelect.addEventListener('change', refreshScheduleAndPrice);
@@ -840,6 +920,7 @@
       displayName = `單程票 (${startName} → ${endName}, ${dist.toFixed(1)}km, ${trainTrip}次)`;
     } else if (type === 'business') {
       typeName = '快速列車商務艙票';
+      const travelDate = businessDateSelect.value;
       const method = document.querySelector('input[name="seat-method"]:checked').value;
       let seat = '';
       if (method === 'manual') {
@@ -851,7 +932,7 @@
       } else {
         seat = getRandomSeat();
       }
-      displayName = `快速列車商務艙 (${startName} → ${endName}, ${dist.toFixed(1)}km, ${trainTrip}次, 座位: ${seat})`;
+      displayName = `快速列車商務艙 [乘車日: ${travelDate}] (${startName} → ${endName}, ${dist.toFixed(1)}km, ${trainTrip}次, 座位: ${seat})`;
     } else if (type.startsWith('pass_')) {
       const days = parseInt(type.replace('pass_', ''), 10);
       typeName = `${days}日定期票`;
@@ -945,6 +1026,7 @@
 
   // 初始掛載執行
   initStationOptions();
+  initBusinessDateOptions();
   buildSeatGrid();
   loadTimetables();
   renderDashboard();
