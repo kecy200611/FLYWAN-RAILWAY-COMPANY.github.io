@@ -404,7 +404,7 @@
     },
     "FR12": {
       name: "飛灣公園",
-      f: ["地面出口月台層 / 2F連通道層", "地面出口驗票區", "出口服務區旁", "非付費區", "有", "有", "有", "開放進出", "開放進出", "50組"],
+      f: ["地面出口月台層 / 2F連通道層", "2F 連通道驗票區", "出口服務區旁", "非付費區", "有", "有", "有", "開放進出", "開放進出", "50組"],
       exits: [
         { id: "1", acc: true, type: "樓梯+電扶梯 / 電梯", loc: "中央公園主入口側" },
         { id: "2", acc: true, type: "樓梯+電扶梯 / 電梯", loc: "公園南路轉乘廣場" }
@@ -1216,7 +1216,7 @@
     drawVerticalCluster(canvas, 34, 375, { label: "出口2 往2F連通道" });
 
     // 右側：地面月台管制區 (x = 220..885)
-    addZoneOutline(canvas, "outline-paid", 220, 15, 665, 510, `${currentStationId} ${s.name} ── 地面月台管制區（月台配置：${s.plat_config}）`);
+    addZoneOutline(canvas, "outline-paid", 220, 15, 665, 510, `${currentStationId} ${s.name} ── 地面月台區（已於 2F 驗票進入，月台配置：${s.plat_config}）`);
 
     const trackLeft = 220;
     const trackWidth = 665;
