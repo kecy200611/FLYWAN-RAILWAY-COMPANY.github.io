@@ -167,8 +167,8 @@
 
           <!-- 乘車日期 (系統自動讀取當前日期，不開放手動選擇) -->
           <div id="business-date-group" style="display: none; margin-bottom: 12px;">
-            <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #294c72;">乘車日期 (系統自動讀取當前日期，不開放手動選擇)：</label>
-            <select id="business-date-select" class="login-input" disabled style="background: #f1f5f9; cursor: not-allowed; color: #1e293b; font-weight: bold;"></select>
+            <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #294c72;">乘車日期 (請選擇，預設今天，可預購 30 天內)：</label>
+            <select id="business-date-select" class="login-input" style="color: #1e293b; font-weight: bold;"></select>
             <div id="flywan-date-badge-ticket" style="margin-top: 6px; padding: 6px 10px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; font-size: 12px; color: #0369a1; display: flex; justify-content: space-between; align-items: center;">
               <span id="flywan-date-text-ticket">飛灣曆日期載入中...</span>
               <span id="flywan-sched-badge-ticket" style="background: #0284c7; color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;">平日時刻表</span>
@@ -483,18 +483,11 @@
     };
   }
 
-  function initBusinessDateOptions() {
-    businessDateSelect.innerHTML = '';
-    const now = new Date();
-    const customCal = convertGregorianToFlywan(now);
-    const gregStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-    
-    const opt = document.createElement('option');
-    opt.value = `${gregStr} [${customCal.short}]`;
-    opt.textContent = `${customCal.text} (公曆 ${gregStr})`;
-    businessDateSelect.appendChild(opt);
-    businessDateSelect.disabled = true;
-
+  function updateTicketDateBadge() {
+    const val = businessDateSelect.value || '';
+    const gregStr = val.split(' ')[0];
+    const [y, m, d] = gregStr.split('-').map(Number);
+    const customCal = convertGregorianToFlywan(new Date(y, m - 1, d));
     const dateTextEl = document.getElementById('flywan-date-text-ticket');
     const badgeEl = document.getElementById('flywan-sched-badge-ticket');
     if (dateTextEl) dateTextEl.textContent = `飛灣曆：${customCal.text}`;
@@ -504,6 +497,23 @@
       badgeEl.textContent = `適用：${isLong ? '連續假日' : (isHol ? '假日' : '平日')}時刻表`;
       badgeEl.style.backgroundColor = isLong ? '#db2777' : (isHol ? '#d97706' : '#0284c7');
     }
+  }
+
+  function initBusinessDateOptions() {
+    businessDateSelect.innerHTML = '';
+    const today = new Date();
+    for (let i = 0; i < 30; i++) {
+      const dt = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+      const cal = convertGregorianToFlywan(dt);
+      const gregStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+      const opt = document.createElement('option');
+      opt.value = `${gregStr} [${cal.short}]`;
+      opt.textContent = `${i === 0 ? '今天 ' : ''}公曆 ${gregStr}｜${cal.text}`;
+      businessDateSelect.appendChild(opt);
+    }
+    businessDateSelect.disabled = false;
+    businessDateSelect.onchange = updateTicketDateBadge;
+    updateTicketDateBadge();
   }
 
   function initStationOptions() {
