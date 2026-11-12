@@ -1,6 +1,9 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="shortcut icon" href="favicon.ico">
+
   <meta charset="UTF-8">
   <title>票務資訊｜飛灣鐵路公司</title>
   <link rel="stylesheet" href="style.css">
@@ -162,10 +165,14 @@
             <option value="mothers_day">母親節套票 (0.50 飛灣幣)</option>
           </select>
 
-          <!-- 商務艙專屬：乘車日期選擇 (開放 60 天訂位) -->
+          <!-- 乘車日期 (系統自動讀取當前日期，不開放手動選擇) -->
           <div id="business-date-group" style="display: none; margin-bottom: 12px;">
-            <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #294c72;">商務艙預約乘車日期 (開放 60 天訂位)：</label>
-            <select id="business-date-select" class="login-input"></select>
+            <label style="display: block; margin-bottom: 4px; font-weight: bold; color: #294c72;">乘車日期 (系統自動讀取當前日期，不開放手動選擇)：</label>
+            <select id="business-date-select" class="login-input" disabled style="background: #f1f5f9; cursor: not-allowed; color: #1e293b; font-weight: bold;"></select>
+            <div id="flywan-date-badge-ticket" style="margin-top: 6px; padding: 6px 10px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; font-size: 12px; color: #0369a1; display: flex; justify-content: space-between; align-items: center;">
+              <span id="flywan-date-text-ticket">飛灣曆日期載入中...</span>
+              <span id="flywan-sched-badge-ticket" style="background: #0284c7; color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 11px;">平日時刻表</span>
+            </div>
           </div>
 
           <!-- 起訖站選擇（單程票與商務艙使用） -->
@@ -406,6 +413,22 @@
     return Math.floor(diff / oneDay) + 1; // 1-based (1 ~ 365/366)
   }
 
+  function getFlywanFestival(m, d) {
+    if (m === 1 && d === 1) return { name: '建國紀念日', scheduleType: 'holiday_long' };
+    if (m === 2 && d === 1) return { name: '情人日', scheduleType: 'holiday' };
+    if (m === 3 && d === 1) return { name: '宗教日', scheduleType: 'holiday' };
+    if (m === 4 && d === 1) return { name: '兒童日', scheduleType: 'holiday' };
+    if (m === 5 && d === 1) return { name: '職業紀念日', scheduleType: 'holiday' };
+    if (m === 6 && d >= 26 && d <= 30) return { name: '家庭周', scheduleType: 'holiday_long' };
+    if (m === 7 && d >= 1 && d <= 5) return { name: '旅遊周', scheduleType: 'holiday_long' };
+    if (m === 8 && d === 1) return { name: '親人節', scheduleType: 'holiday' };
+    if (m === 9 && d === 1) return { name: '性別平等日', scheduleType: 'holiday' };
+    if (m === 10 && d === 1) return { name: '和平日', scheduleType: 'holiday' };
+    if (m === 11 && d === 1) return { name: '自然日', scheduleType: 'holiday' };
+    if (m === 12 && d === 30) return { name: '年尾紀念日', scheduleType: 'holiday_long' };
+    return null;
+  }
+
   function convertGregorianToFlywan(date) {
     const year = date.getFullYear();
     const leap = isLeapYear(year);
@@ -419,7 +442,11 @@
       const isRest = (weekdayIdx === 4);
       return {
         year: year,
-        text: `${year}年 年初假期週 第${dayOfYear}天 (${weekdayNames[weekdayIdx]}${isRest ? ' [休]' : ''})`,
+        month: 0,
+        day: dayOfYear,
+        holidayName: '年初假期週',
+        scheduleType: 'holiday_long',
+        text: `${year}年 年初假期週 第${dayOfYear}天 (${weekdayNames[weekdayIdx]} [連假 - 年初假期週])`,
         short: `${year} 假期週 D${dayOfYear}`
       };
     }
@@ -432,30 +459,50 @@
     const weekdayIdx = dayInWeek - 1;
     const isRest = (weekdayIdx === 4);
 
+    const fest = getFlywanFestival(month, dayInMonth);
+    let schedType = 'weekday';
+    let tag = '';
+    if (fest) {
+      schedType = fest.scheduleType;
+      tag = (fest.scheduleType === 'holiday_long') ? ` [連假 - ${fest.name}]` : ` [休 - ${fest.name}]`;
+    } else if (isRest) {
+      schedType = 'holiday';
+      tag = ' [休]';
+    }
+
     return {
       year: year,
       month: month,
       week: weekInMonth,
       day: dayInMonth,
       weekday: weekdayNames[weekdayIdx],
-      text: `${year}年 第${month}月 第${weekInMonth}週 第${dayInWeek}天 (${weekdayNames[weekdayIdx]}${isRest ? ' [休]' : ''}) - 該月第${dayInMonth}日`,
-      short: `${year}年${month}月${dayInMonth}日 (W${weekInMonth}-D${dayInWeek})`
+      holidayName: fest ? fest.name : (isRest ? '休息日' : ''),
+      scheduleType: schedType,
+      text: `${year}年 第${month}月 第${weekInMonth}週 第${dayInWeek}天 (${weekdayNames[weekdayIdx]}${tag}) - 該月第${dayInMonth}日`,
+      short: `${year}年${month}月${dayInMonth}日 (W${weekInMonth}-D${dayInWeek}${fest ? '・' + fest.name : ''})`
     };
   }
 
   function initBusinessDateOptions() {
     businessDateSelect.innerHTML = '';
     const now = new Date();
-    // 開放未來 60 天訂位
-    for (let i = 0; i < 60; i++) {
-      const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
-      const customCal = convertGregorianToFlywan(targetDate);
-      const gregStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth()+1).padStart(2,'0')}-${String(targetDate.getDate()).padStart(2,'0')}`;
-      
-      const opt = document.createElement('option');
-      opt.value = `${gregStr} [${customCal.short}]`;
-      opt.textContent = `${customCal.text} (公曆 ${gregStr})`;
-      businessDateSelect.appendChild(opt);
+    const customCal = convertGregorianToFlywan(now);
+    const gregStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    
+    const opt = document.createElement('option');
+    opt.value = `${gregStr} [${customCal.short}]`;
+    opt.textContent = `${customCal.text} (公曆 ${gregStr})`;
+    businessDateSelect.appendChild(opt);
+    businessDateSelect.disabled = true;
+
+    const dateTextEl = document.getElementById('flywan-date-text-ticket');
+    const badgeEl = document.getElementById('flywan-sched-badge-ticket');
+    if (dateTextEl) dateTextEl.textContent = `飛灣曆：${customCal.text}`;
+    if (badgeEl) {
+      const isLong = (customCal.scheduleType === 'holiday_long');
+      const isHol = (customCal.scheduleType === 'holiday');
+      badgeEl.textContent = `適用：${isLong ? '連續假日' : (isHol ? '假日' : '平日')}時刻表`;
+      badgeEl.style.backgroundColor = isLong ? '#db2777' : (isHol ? '#d97706' : '#0284c7');
     }
   }
 
@@ -593,8 +640,8 @@
     const isPointToPoint = (ticketType === 'single' || ticketType === 'business');
     const isBusiness = (ticketType === 'business');
 
-    // 商務艙日期選擇切換（其他票種不顯示）
-    businessDateGroup.style.display = isBusiness ? 'block' : 'none';
+    // 自動讀取乘車日期顯示（單程票與商務艙均自動顯示當日）
+    businessDateGroup.style.display = isPointToPoint ? 'block' : 'none';
 
     odGroup.style.display = isPointToPoint ? 'block' : 'none';
     trainTripGroup.style.display = isPointToPoint ? 'block' : 'none';
