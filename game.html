@@ -3207,6 +3207,38 @@
 
         ];
 
+        // --- 月台長度與停車標位置輔助函式 ---
+        // 快速停靠站 (exp: true) 月台長 135M (±67.5M)：6輛編組停靠 ±65M，4輛編組停靠 ±42.5M (45M前)
+        // 其他車站 (exp: false) 月台長 85M (±42.5M)：4輛編組停靠 ±42.5M
+        // 閉塞停車點一律以最前端停車點為準，不受不同停車標之影響
+        function getPlatformLength(st) {
+            return (st && st.exp) ? 135 : 85;
+        }
+        function getFrontStopMarkerOffset(st) {
+            return (st && st.exp) ? 65 : 42.5;
+        }
+        function getFrontStopMarkerPos(st, dir) {
+            if (!st) return 0;
+            if (st.type === 'depot') return st.dist;
+            let off = getFrontStopMarkerOffset(st);
+            return (dir === 'down') ? (st.dist + off) : (st.dist - off);
+        }
+        function getTrainStopMarkerOffset(st, is6Cars) {
+            if (st && st.exp && is6Cars) return 65;
+            return 42.5;
+        }
+        function getTrainStopMarkerPos(st, dir, is6Cars) {
+            if (!st) return 0;
+            if (st.type === 'depot') return st.dist;
+            let off = getTrainStopMarkerOffset(st, is6Cars);
+            return (dir === 'down') ? (st.dist + off) : (st.dist - off);
+        }
+        function getPlayerStopMarkerPosAtStation(st, dir, typeOverride) {
+            let d = dir || ((typeof state !== 'undefined' && state.dir) ? state.dir : 'down');
+            let t = typeOverride || ((typeof state !== 'undefined' && state.type) ? state.type : 'local');
+            return getTrainStopMarkerPos(st, d, t === 'express');
+        }
+
 
 
         // 限速區間 (絕對座標)
@@ -5886,7 +5918,7 @@
 
             let startDist = raw[0].dist;
 
-            state.d = (state.dir === 'down') ? startDist + 77 : startDist - 77;
+            state.d = getPlayerStopMarkerPosAtStation(raw[0], state.dir, state.type);
 
             state.active = true; state.v = 0; state.p = 0; state.b = 4;
 
@@ -7986,7 +8018,7 @@
 
             if (targetStop && targetStop.data) {
 
-                let targetPos = (state.dir === 'down') ? targetStop.data.dist + 77 : targetStop.data.dist - 77;
+                let targetPos = getPlayerStopMarkerPosAtStation(targetStop.data, state.dir, state.type);
 
                 diff = (state.dir === 'down') ? (targetPos - state.d) : (state.d - targetPos);
 
@@ -9974,7 +10006,7 @@
 
                     let w_out = easeInOut((250 - absDiff) / 150); if (absDiff < 100) w_out = 1;
 
-                    L_out = L_in - 7.2 * w_out; R_out = R_in + 7.2 * w_out;
+                    L_out = L_in - 18.0 * w_out; R_out = R_in + 18.0 * w_out;
 
                 }
 
@@ -9990,11 +10022,11 @@
 
                 let w = easeInOut((250 - absDiff) / 150); if (absDiff < 100) w = 1;
 
-                if (st.type === 'island') { L_in = -2 - 2.1 * w; R_in = 2 + 2.1 * w; }
+                if (st.type === 'island') { L_in = -2 - 7.0 * w; R_in = 2 + 7.0 * w; }
 
                 else if (st.type === 'passing_side') { L_out = -2 - 4.0 * w; R_out = 2 + 4.0 * w; }
 
-                else if (st.type === 'double_island') { L_out = -2 - 7.2 * w; R_out = 2 + 7.2 * w; }
+                else if (st.type === 'double_island') { L_out = -2 - 18.0 * w; R_out = 2 + 18.0 * w; }
 
             }
 
@@ -10836,7 +10868,18 @@
 
                 let minO = L_out !== null ? L_out : L_in; let maxO = R_out !== null ? R_out : R_in;
 
-                if (d >= 57600 && d <= 58300) { minO = Math.min(minO, -9.5); maxO = Math.max(maxO, 9.5); }
+                if (d >= 57600 && d <= 58300) { minO = Math.min(minO, -20.5); maxO = Math.max(maxO, 20.5); }
+
+                for (let st of STATIONS) {
+                    let absDiff = Math.abs(d - st.dist);
+                    if (absDiff <= 150 && (st.type === 'side' || st.type === 'passing_side')) {
+                        let w = absDiff <= 60 ? 1 : easeInOut((150 - absDiff) / 90);
+                        let baseTrack = (st.type === 'passing_side') ? 6.0 : 2.0;
+                        let platOuter = baseTrack + 1.5 + 8.0 * w;
+                        minO = Math.min(minO, -platOuter);
+                        maxO = Math.max(maxO, platOuter);
+                    }
+                }
 
                 if (d >= 650 && d <= 1050) {
 
@@ -11620,11 +11663,11 @@
 
                 if (p.d >= 57650) {
 
-                    if (p.d <= 57800) { let w = easeInOut((p.d - 57650) / 150); offC = -2 - 7.2 * w; offD = 2 + 7.2 * w; }
+                    if (p.d <= 57800) { let w = easeInOut((p.d - 57650) / 150); offC = -2 - 18.0 * w; offD = 2 + 18.0 * w; }
 
-                    else if (p.d <= 57980) { offC = -9.2; offD = 9.2; }
+                    else if (p.d <= 57980) { offC = -20.0; offD = 20.0; }
 
-                    else if (p.d <= 58230) { let w = easeInOut((p.d - 57980) / 250); offC = -9.2 + 7.2 * w; offD = 9.2 - 7.2 * w; }
+                    else if (p.d <= 58230) { let w = easeInOut((p.d - 57980) / 250); offC = -20.0 + 18.0 * w; offD = 20.0 - 18.0 * w; }
 
                     else { offC = L_in; offD = R_in; }
 
@@ -11738,7 +11781,7 @@
 
 
 
-            [-2, 2, -9.2, 9.2].forEach(off => createBufferStop(-80, off, true));
+            [-2, 2, -20.0, 20.0].forEach(off => createBufferStop(-80, off, true));
 
             [-2, 2].forEach(off => createBufferStop(57980, off, false));
 
@@ -11776,191 +11819,276 @@
 
             const platMat = applySceneryDistanceShader(new THREE.MeshLambertMaterial({ color: 0x828282 }), 1000, 850);
 
-            const geoIsland = new THREE.BoxGeometry(5.2, 1.2, 160);
+            // 島式月台擴大寬度到 15M，側式月台擴大寬度到 8M；快速停靠車站月台長 135M，其他車站月台長 85M
+            const geoIsland135 = new THREE.BoxGeometry(15.0, 1.2, 135);
+            const geoIsland85 = new THREE.BoxGeometry(15.0, 1.2, 85);
+            const geoSide135 = new THREE.BoxGeometry(8.0, 1.2, 135);
+            const geoSide85 = new THREE.BoxGeometry(8.0, 1.2, 85);
 
-            const geoSide = new THREE.BoxGeometry(4.2, 1.2, 160);
+            // 建立 4 輛編組 (綠色「4 停」) 與 6 輛編組 (藍底紅框「6 停」) 雙面可見停車標材質
+            function createCarStopSignMat(carNum) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 128;
+                canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                const is6 = (carNum === 6);
+                const mainColor = is6 ? '#e11d48' : '#16a34a';
+                const badgeBg = is6 ? '#1e3a8a' : '#ecfdf5';
+                const numColor = is6 ? '#ffffff' : '#15803d';
 
-            const geoPassing = new THREE.BoxGeometry(4.2, 1.2, 160);
+                ctx.fillStyle = badgeBg;
+                ctx.fillRect(0, 0, 128, 128);
+                ctx.strokeStyle = mainColor;
+                ctx.lineWidth = 12;
+                ctx.strokeRect(6, 6, 116, 116);
 
-            const stopCanvas = document.createElement('canvas'); stopCanvas.width = 128; stopCanvas.height = 128;
+                // 上方大數字 (4 或 6)
+                ctx.fillStyle = numColor;
+                ctx.font = '900 66px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(String(carNum), 64, 48);
 
-            const sCtx = stopCanvas.getContext('2d'); sCtx.fillStyle = '#ffffff'; sCtx.fillRect(0, 0, 128, 128);
+                // 下方色帶與「停 CAR」字樣
+                ctx.fillStyle = mainColor;
+                ctx.fillRect(12, 82, 104, 34);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 26px sans-serif';
+                ctx.fillText(carNum + '輛停', 64, 100);
 
-            sCtx.strokeStyle = '#ff0000'; sCtx.lineWidth = 12; sCtx.strokeRect(6, 6, 116, 116);
+                const tex = new THREE.CanvasTexture(canvas);
+                return new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.FrontSide });
+            }
 
-            sCtx.fillStyle = '#ff0000'; sCtx.font = 'bold 80px sans-serif'; sCtx.textAlign = 'center'; sCtx.textBaseline = 'middle'; sCtx.fillText("停", 64, 68);
+            const stopMat4 = createCarStopSignMat(4);
+            const stopMat6 = createCarStopSignMat(6);
+            const poleMat = new THREE.MeshLambertMaterial({ color: 0xcccccc, side: THREE.DoubleSide });
 
-            const stopMat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(stopCanvas), transparent: true });
+            // 月台門 (PSD) 專用材質 (統一 100M GPU 著色器渲染，確保兩面可見)
+            const psdGlassMat = applyScenery100mShader(new THREE.MeshLambertMaterial({ color: 0x81d4fa, opacity: 0.55, side: THREE.DoubleSide }));
+            const psdFrameMat = applyScenery100mShader(new THREE.MeshLambertMaterial({ color: 0x2b2b2b, side: THREE.DoubleSide }));
+            const psdHeaderMat = applyScenery100mShader(new THREE.MeshLambertMaterial({ color: 0x0088cc, side: THREE.DoubleSide }));
+            const psdWarningMat = applyScenery100mShader(new THREE.MeshBasicMaterial({ color: 0xffcc00, side: THREE.DoubleSide }));
+            const psdUpperWallMat = applySceneryDistanceShader(new THREE.MeshLambertMaterial({ color: 0x767b82, side: THREE.DoubleSide }), 1000, 850);
 
-            const poleMat = new THREE.MeshLambertMaterial({ color: 0xcccccc });
+            // 行李處理區方型盒子材質 (7M 寬 × 25M 長)
+            const baggageCanvas = document.createElement('canvas');
+            baggageCanvas.width = 512;
+            baggageCanvas.height = 128;
+            const bCtx = baggageCanvas.getContext('2d');
+            bCtx.fillStyle = '#334155';
+            bCtx.fillRect(0, 0, 512, 128);
+            bCtx.fillStyle = '#f59e0b';
+            bCtx.fillRect(0, 0, 512, 18);
+            bCtx.fillRect(0, 110, 512, 18);
+            bCtx.fillStyle = '#f8fafc';
+            bCtx.font = 'bold 34px sans-serif';
+            bCtx.textAlign = 'center';
+            bCtx.textBaseline = 'middle';
+            bCtx.fillText('行李處理區 BAGGAGE HANDLING', 256, 64);
+            const baggageBoxMat = applySceneryDistanceShader(new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(baggageCanvas), side: THREE.DoubleSide }), 1000, 850);
 
-
-
-            // 半高式月台門 (PSD) 專用材質 (統一 100M GPU 著色器渲染)
-
-            const psdGlassMat = applyScenery100mShader(new THREE.MeshLambertMaterial({ color: 0x81d4fa, opacity: 0.65 }));
-
-            const psdFrameMat = applyScenery100mShader(new THREE.MeshLambertMaterial({ color: 0x2b2b2b }));
-
-            const psdHeaderMat = applyScenery100mShader(new THREE.MeshLambertMaterial({ color: 0x0088cc }));
-
-            const psdWarningMat = applyScenery100mShader(new THREE.MeshBasicMaterial({ color: 0xffcc00 }));
-
-
-
-            // 輔助函式：於月台沿線靠軌道側生成半高式月台門 (PSD) - 黃灰立桿交錯放置，精簡場景節點
-
-            function createPlatformScreenDoors(platformGroup, edgeX, length = 156) {
-
+            // 輔助函式：於月台沿線靠軌道側生成月台門 (PSD)
+            // 地下車站 (isUnderground = true)：改為全罩式月台門，門框高度 2.8M (2.5~3M)，以上補水泥牆至隧道頂部，確保兩面可見
+            // 高架與地面車站：維持半高式月台門
+            function createPlatformScreenDoors(platformGroup, edgeX, length = 83, isUnderground = false) {
                 const psdGroup = new THREE.Group();
 
-                // 頂部導軌橫樑 (Header Bar)
+                if (isUnderground) {
+                    // 全罩式月台門：月台面為 localY = 0.6
+                    // 門框高度 2.8M (localY = 0.6 ~ 3.4)，上方補水泥牆 2.0M (localY = 3.4 ~ 5.4 接齊地下隧道天花板 p.y + 6.0)
+                    const baseMesh = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.2, length), psdFrameMat);
+                    baseMesh.position.set(edgeX, 0.7, 0);
+                    psdGroup.add(baseMesh);
 
-                const headerMesh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, length), psdHeaderMat);
+                    const glassMesh = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.45, length), psdGlassMat);
+                    glassMesh.position.set(edgeX, 2.025, 0);
+                    psdGroup.add(glassMesh);
 
-                headerMesh.position.set(edgeX, 1.45, 0);
+                    const headerMesh = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.15, length), psdHeaderMat);
+                    headerMesh.position.set(edgeX, 3.325, 0);
+                    psdGroup.add(headerMesh);
 
-                psdGroup.add(headerMesh);
+                    // 門框以上補水泥牆 (高 2.0M，localY 從 3.4 到 5.4，雙面可見)
+                    const upperWallMesh = new THREE.Mesh(new THREE.BoxGeometry(0.24, 2.0, length), psdUpperWallMat);
+                    upperWallMesh.position.set(edgeX, 4.4, 0);
+                    psdGroup.add(upperWallMesh);
 
+                    // 2.8M 高全罩式門框立柱
+                    const poleGeo = new THREE.BoxGeometry(0.12, 2.6, 0.12);
+                    const segCount = Math.floor(length / 2.5);
+                    for (let k = -Math.floor(segCount / 2); k <= Math.floor(segCount / 2); k++) {
+                        let zPos = k * 2.5;
+                        if (Math.abs(zPos) > length / 2 - 0.2) continue;
+                        let mat = (Math.abs(k) % 2 === 0) ? psdWarningMat : psdFrameMat;
+                        let poleMesh = new THREE.Mesh(poleGeo, mat);
+                        poleMesh.position.set(edgeX, 2.0, zPos);
+                        psdGroup.add(poleMesh);
+                    }
+                } else {
+                    // 半高式月台門
+                    const headerMesh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, length), psdHeaderMat);
+                    headerMesh.position.set(edgeX, 1.45, 0);
+                    psdGroup.add(headerMesh);
 
+                    const baseMesh = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.2, length), psdFrameMat);
+                    baseMesh.position.set(edgeX, 0.7, 0);
+                    psdGroup.add(baseMesh);
 
-                // 底部基座 (Base)
-
-                const baseMesh = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.2, length), psdFrameMat);
-
-                baseMesh.position.set(edgeX, 0.7, 0);
-
-                psdGroup.add(baseMesh);
-
-
-
-                // 黃色與灰色立桿交錯放置 (每 2 米一根立桿，大幅減少場景節點數量並保留月台門意象)
-
-                const poleGeo = new THREE.BoxGeometry(0.08, 0.8, 0.08);
-
-                const segCount = Math.floor(length / 2);
-
-                for (let k = -segCount / 2; k < segCount / 2; k++) {
-
-                    let zPos = k * 2 + 1;
-
-                    let mat = (Math.abs(k) % 2 === 0) ? psdWarningMat : psdFrameMat;
-
-                    let poleMesh = new THREE.Mesh(poleGeo, mat);
-
-                    poleMesh.position.set(edgeX, 1.1, zPos);
-
-                    psdGroup.add(poleMesh);
-
+                    const poleGeo = new THREE.BoxGeometry(0.08, 0.8, 0.08);
+                    const segCount = Math.floor(length / 2);
+                    for (let k = -Math.floor(segCount / 2); k < Math.floor(segCount / 2); k++) {
+                        let zPos = k * 2 + 1;
+                        if (Math.abs(zPos) > length / 2 - 0.2) continue;
+                        let mat = (Math.abs(k) % 2 === 0) ? psdWarningMat : psdFrameMat;
+                        let poleMesh = new THREE.Mesh(poleGeo, mat);
+                        poleMesh.position.set(edgeX, 1.1, zPos);
+                        psdGroup.add(poleMesh);
+                    }
                 }
-
                 platformGroup.add(psdGroup);
-
             }
 
+            // 輔助函式：新增地下月台頭尾端水泥擋板
+            // 於月台 Z 軸頭尾端 (localZ = ±halfLen) 封閉月台兩端，高度從月台頂面 (localY = 0.6) 直達隧道頂部 (localY = 5.4)，總高 4.8M
+            function createPlatformEndConcreteWalls(platformGroup, centerX, platWidth, halfLen) {
+                // 水泥擋板厚度 0.35M、高度 4.8M、寬度略寬於月台 platWidth + 0.05
+                const wallGeo = new THREE.BoxGeometry(platWidth + 0.05, 4.8, 0.35);
+                // 綾路北站端 (+d, localZ = -halfLen)
+                const wallNorth = new THREE.Mesh(wallGeo, psdUpperWallMat);
+                wallNorth.position.set(centerX, 0.6 + 2.4, -halfLen);
+                platformGroup.add(wallNorth);
 
+                // 飛灣工業區端 (-d, localZ = +halfLen)
+                const wallSouth = new THREE.Mesh(wallGeo, psdUpperWallMat);
+                wallSouth.position.set(centerX, 0.6 + 2.4, halfLen);
+                platformGroup.add(wallSouth);
+            }
 
-            function createStopSign(d, trackOffset, isForwardDir) {
+            // 輔助函式：新增行李處理區方型盒子 (靠綾路北站端 +65M 停車標往後 20~45M，即 st.dist + 20M ~ st.dist + 45M，長 25M、寬 7M)
+            function createBaggageHandlingBox(platformGroup, centerX) {
+                const boxGeo = new THREE.BoxGeometry(7.0, 2.8, 25.0);
+                const boxMesh = new THREE.Mesh(boxGeo, baggageBoxMat);
+                // group 本地座標中，-Z 朝向綾路北站 (+d)，因此 st.dist + 32.5M 對應 localZ = -32.5；月台頂面為 localY = 0.6
+                boxMesh.position.set(centerX, 0.6 + 1.4, -32.5);
+                platformGroup.add(boxMesh);
+            }
 
-                let signOffset = isForwardDir ? trackOffset - 1.3 : trackOffset + 1.3;
-
+            // 雙面可見停車標生成函式 (依 4 輛 / 6 輛編組區分顏色與數字，正反雙面皆為正向文字)
+            function createStopSign(d, trackOffset, isForwardDir, carCount = 4) {
+                let signOffset = isForwardDir ? trackOffset - 1.32 : trackOffset + 1.32;
                 let p = getPtDetail(d, signOffset);
-
                 const group = new THREE.Group();
+                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.9), poleMat);
+                pole.position.y = 0.95;
 
-                const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 1.8), poleMat); pole.position.y = 0.9;
+                const mat = (carCount === 6) ? stopMat6 : stopMat4;
+                const signFront = new THREE.Mesh(new THREE.PlaneGeometry(0.64, 0.64), mat);
+                signFront.position.set(0, 1.65, 0.015);
+                const signBack = new THREE.Mesh(new THREE.PlaneGeometry(0.64, 0.64), mat);
+                signBack.position.set(0, 1.65, -0.015);
+                signBack.rotation.y = Math.PI;
+                const backing = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.66, 0.02), poleMat);
+                backing.position.set(0, 1.65, 0);
 
-                const sign = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.6), stopMat); sign.position.y = 1.6;
-
-                sign.rotation.y = -p.a + (isForwardDir ? 0 : Math.PI);
-
-                group.add(pole, sign); group.position.set(p.x, p.y + 0.1, p.z);
-
+                group.add(pole, backing, signFront, signBack);
+                group.rotation.y = -p.a + (isForwardDir ? 0 : Math.PI);
+                group.position.set(p.x, p.y + 0.1, p.z);
                 scene.add(group);
-
             }
-
-
 
             STATIONS.forEach(st => {
+                let p = getPtDetail(st.dist, 0);
+                const group = new THREE.Group();
+                group.position.set(p.x, p.y + 0.6, p.z);
+                group.rotation.y = -p.a;
 
-                let p = getPtDetail(st.dist, 0); const group = new THREE.Group();
-
-                group.position.set(p.x, p.y + 0.6, p.z); group.rotation.y = -p.a;
-
-                let px = st.name.includes("FR12") ? 7.8 : 5.6;
+                const isUnderground = (p.y < -5);
+                const platLen = st.exp ? 135 : 85;
+                const psdLen = platLen - 2;
+                const geoIslandCur = st.exp ? geoIsland135 : geoIsland85;
+                const geoSideCur = st.exp ? geoSide135 : geoSide85;
 
                 if (st.type === "side") {
-
-                    const p1 = new THREE.Mesh(geoSide, platMat); p1.position.x = -px;
-
-                    const p2 = new THREE.Mesh(geoSide, platMat); p2.position.x = px;
-
+                    // 側式月台寬 8M (半寬 4M)，正線軌道 ±2.0M，月台內緣 ±3.5M，中心 ±7.5M
+                    const px = 7.5;
+                    const p1 = new THREE.Mesh(geoSideCur, platMat); p1.position.x = -px;
+                    const p2 = new THREE.Mesh(geoSideCur, platMat); p2.position.x = px;
                     group.add(p1, p2);
-
-                    createPlatformScreenDoors(group, -px + 2.05);
-
-                    createPlatformScreenDoors(group, px - 2.05);
-
+                    createPlatformScreenDoors(group, -3.55, psdLen, isUnderground);
+                    createPlatformScreenDoors(group, 3.55, psdLen, isUnderground);
+                    if (isUnderground) {
+                        createPlatformEndConcreteWalls(group, -px, 8.0, platLen / 2);
+                        createPlatformEndConcreteWalls(group, px, 8.0, platLen / 2);
+                    }
                 } else if (st.type === "double_island" || st.type === "double_island_end") {
-
-                    const p1 = new THREE.Mesh(geoSide, platMat); p1.position.x = -px;
-
-                    const p2 = new THREE.Mesh(geoSide, platMat); p2.position.x = px;
-
+                    // 雙島式月台：每座島式月台寬 15M (半寬 7.5M)
+                    // FR12 正線 ±4.2M -> 內緣 ±5.7M，月台中心 ±13.2M，外緣 ±20.7M，外軌 ±22.2M
+                    // 其他站正線 ±2.0M -> 內緣 ±3.5M，月台中心 ±11.0M，外緣 ±18.5M，外軌 ±20.0M
+                    const px = st.name.includes("FR12") ? 13.2 : 11.0;
+                    const p1 = new THREE.Mesh(geoIslandCur, platMat); p1.position.x = -px;
+                    const p2 = new THREE.Mesh(geoIslandCur, platMat); p2.position.x = px;
                     group.add(p1, p2);
+                    createPlatformScreenDoors(group, -px + 7.45, psdLen, isUnderground);
+                    createPlatformScreenDoors(group, -px - 7.45, psdLen, isUnderground);
+                    createPlatformScreenDoors(group, px - 7.45, psdLen, isUnderground);
+                    createPlatformScreenDoors(group, px + 7.45, psdLen, isUnderground);
+                    if (isUnderground) {
+                        createPlatformEndConcreteWalls(group, -px, 15.0, platLen / 2);
+                        createPlatformEndConcreteWalls(group, px, 15.0, platLen / 2);
+                    }
 
-                    createPlatformScreenDoors(group, -px + 2.05);
-
-                    createPlatformScreenDoors(group, -px - 2.05);
-
-                    createPlatformScreenDoors(group, px - 2.05);
-
-                    createPlatformScreenDoors(group, px + 2.05);
-
+                    // 行李處理區方型盒子：
+                    // 飛灣郵輪港(FR04) 2、3月台(正線側)、飛灣新站(FR08) 2、3月台(正線側)、飛灣機場(FR16) 2、3月台(正線側)
+                    // 綾路北站(FR21) 3月台(快速停靠側)
+                    // 靠綾路北站端停車標(+65M)往後 20~45M (即 st.dist + 20M ~ +45M)，佔 7M 月台寬度 (正線側內緣 3.65M ~ 10.65M，中心 ±7.15M)
+                    if (st.name.includes("FR04") || st.name.includes("FR08") || st.name.includes("FR16")) {
+                        createBaggageHandlingBox(group, 7.15);  // 第 2 月台 (正線側 +X)
+                        createBaggageHandlingBox(group, -7.15); // 第 3 月台 (正線側 -X)
+                    } else if (st.name.includes("FR21")) {
+                        createBaggageHandlingBox(group, -7.15); // 第 3 月台 (快速停靠側 -X)
+                    }
                 } else if (st.type === "island") {
-
-                    const p1 = new THREE.Mesh(geoIsland, platMat); p1.position.x = 0; group.add(p1);
-
-                    createPlatformScreenDoors(group, -2.55);
-
-                    createPlatformScreenDoors(group, 2.55);
-
+                    // 島式月台寬 15M (半寬 7.5M)，中心 0M，軌道 ±9.0M
+                    const p1 = new THREE.Mesh(geoIslandCur, platMat); p1.position.x = 0;
+                    group.add(p1);
+                    createPlatformScreenDoors(group, -7.45, psdLen, isUnderground);
+                    createPlatformScreenDoors(group, 7.45, psdLen, isUnderground);
+                    if (isUnderground) {
+                        createPlatformEndConcreteWalls(group, 0, 15.0, platLen / 2);
+                    }
                 } else if (st.type === "passing_side") {
-
-                    const p1 = new THREE.Mesh(geoPassing, platMat); p1.position.x = -9.6;
-
-                    const p2 = new THREE.Mesh(geoPassing, platMat); p2.position.x = 9.6;
-
+                    // 越行側式月台寬 8M (半寬 4M)，側線軌道 ±6.0M，月台內緣 ±7.5M，中心 ±11.5M
+                    const px = 11.5;
+                    const p1 = new THREE.Mesh(geoSideCur, platMat); p1.position.x = -px;
+                    const p2 = new THREE.Mesh(geoSideCur, platMat); p2.position.x = px;
                     group.add(p1, p2);
-
-                    createPlatformScreenDoors(group, -7.55);
-
-                    createPlatformScreenDoors(group, 7.55);
-
+                    createPlatformScreenDoors(group, -7.55, psdLen, isUnderground);
+                    createPlatformScreenDoors(group, 7.55, psdLen, isUnderground);
+                    if (isUnderground) {
+                        createPlatformEndConcreteWalls(group, -px, 8.0, platLen / 2);
+                        createPlatformEndConcreteWalls(group, px, 8.0, platLen / 2);
+                    }
                 }
 
                 scene.add(group);
 
                 let { L_in, R_in, L_out, R_out } = getBaseOffsets(st.dist);
-
-                [L_in, R_in, L_out, R_out].filter(o => o !== null).forEach(off => {
-
-                    createStopSign(st.dist + 77, off, true);
-
-                    createStopSign(st.dist - 77, off, false);
-
-                });
-
-
-
+                let trackOffsets = [L_in, R_in, L_out, R_out].filter(o => o !== null);
                 if (st.name.includes("FR21")) {
-
-                    createStopSign(st.dist + 77, -9.2, true); createStopSign(st.dist + 77, 9.2, true);
-
-                    createStopSign(st.dist - 77, -9.2, false); createStopSign(st.dist - 77, 9.2, false);
-
+                    trackOffsets.push(-20.0, 20.0);
                 }
+
+                trackOffsets.forEach(off => {
+                    // 所有車站皆設置 4 輛編組停車標 (±42.5M，停靠於 45M 前)
+                    createStopSign(st.dist + 42.5, off, true, 4);
+                    createStopSign(st.dist - 42.5, off, false, 4);
+                    // 快速停靠站額外於月台前端 (±65M) 設置 6 輛編組停車標
+                    if (st.exp) {
+                        createStopSign(st.dist + 65, off, true, 6);
+                        createStopSign(st.dist - 65, off, false, 6);
+                    }
+                });
 
             });
 
@@ -12656,9 +12784,9 @@
 
                     if (dir === 'down') {
 
-                        if (d < 100) return -9.2;                          // 月台4本線
+                        if (d < 100) return -20.0;                         // 月台4本線
 
-                        if (d <= 250) { let t = (d - 100) / 150; return -9.2 + 7.2 * easeInOut(t); }  // 第一橫渡線
+                        if (d <= 250) { let t = (d - 100) / 150; return -20.0 + 18.0 * easeInOut(t); } // 第一橫渡線
 
                         if (d < 300) return -2;                           // 左正線過渡段
 
@@ -12668,9 +12796,9 @@
 
                     } else {
 
-                        if (d <= 100) return -9.2;                         // 月台4本線
+                        if (d <= 100) return -20.0;                        // 月台4本線
 
-                        if (d <= 250) { let t = (d - 100) / 150; return -9.2 + 7.2 * easeInOut(t); }  // 橫渡線
+                        if (d <= 250) { let t = (d - 100) / 150; return -20.0 + 18.0 * easeInOut(t); } // 橫渡線
 
                         return -2;                                         // 上行正線
 
@@ -12702,33 +12830,33 @@
 
             if (type === 'local_fr01_p1') {
 
-                // FR01 月台1 (+9.2m)，下行由外軌並軌至下行正線 (+2m)，不需跨越 X 橫渡線：
+                // FR01 月台1 (+20.0m)，下行由外軌並軌至下行正線 (+2m)，不需跨越 X 橫渡線：
 
-                //   第一段 d=100~250：+9.2m → +2m（月台1外軌並軌右正線/下行正線）
+                //   第一段 d=100~250：+20.0m → +2m（月台1外軌並軌右正線/下行正線）
 
                 //   後續 d >= 250：保持在 +2m（下行正線）
 
-                // 上行進入第一月台 (+9.2m)：
+                // 上行進入第一月台 (+20.0m)：
 
                 //   從上行側正線 (-2.0m) 進站，經由 X 橫渡線 (d=380~300) 從上行正線切入下行正線 (+2.0m)，
 
-                //   再經道岔 (d=250~100) 由下行正線切入第一月台 (+9.2m)
+                //   再經道岔 (d=250~100) 由下行正線切入第一月台 (+20.0m)
 
                 if (d < 450) {
 
                     if (dir === 'down') {
 
-                        if (d < 100) return 9.2;                           // 月台1本線
+                        if (d < 100) return 20.0;                          // 月台1本線
 
-                        if (d <= 250) { let t = (d - 100) / 150; return 9.2 - 7.2 * easeInOut(t); }   // 並軌段
+                        if (d <= 250) { let t = (d - 100) / 150; return 20.0 - 18.0 * easeInOut(t); }  // 並軌段
 
                         return 2;                                          // 下行正線
 
                     } else {
 
-                        if (d <= 100) return 9.2;                          // 第一月台本線
+                        if (d <= 100) return 20.0;                         // 第一月台本線
 
-                        if (d <= 250) { let t = (d - 100) / 150; return 9.2 - 7.2 * easeInOut(t); }   // 側線道岔段 (+2m → +9.2m)
+                        if (d <= 250) { let t = (d - 100) / 150; return 20.0 - 18.0 * easeInOut(t); }  // 側線道岔段 (+2m → +20.0m)
 
                         if (d < 300) return 2;                             // 正線過渡段 (+2m)
 
@@ -12978,11 +13106,11 @@
 
                     if (d <= 57800) {
 
-                        let w = easeInOut((d - 57650) / 150); outerOff = 2 + 7.2 * w;
+                        let w = easeInOut((d - 57650) / 150); outerOff = 2 + 18.0 * w;
 
                     } else if (d <= 58230) {
 
-                        let w = easeInOut((d - 57980) / 250); outerOff = 9.2 - 7.2 * w;
+                        let w = easeInOut((d - 57980) / 250); outerOff = 20.0 - 18.0 * w;
 
                     } else {
 
@@ -13060,11 +13188,11 @@
 
                 if (d <= 57800) {
 
-                    let w = easeInOut((d - 57650) / 150); outerOff = 2 + 7.2 * w;
+                    let w = easeInOut((d - 57650) / 150); outerOff = 2 + 18.0 * w;
 
                 } else if (d <= 58230) {
 
-                    let w = easeInOut((d - 57980) / 250); outerOff = 9.2 - 7.2 * w;
+                    let w = easeInOut((d - 57980) / 250); outerOff = 20.0 - 18.0 * w;
 
                 } else {
 
@@ -13736,7 +13864,7 @@
 
                 }
 
-                let pos = (st.type === 'depot') ? st.dist : ((dir === 'down') ? (st.dist + 77) : (st.dist - 77));
+                let pos = getTrainStopMarkerPos(st, dir, is6Cars);
 
                 let isOrigin = (i === 0);
 
@@ -15012,7 +15140,8 @@
 
                 for (let item of list) {
 
-                    let stopMarkerPos = (stObj && stObj.type === 'depot') ? stDist : ((item.dir === 'down') ? (stDist + 77) : (stDist - 77));
+                    let isItem6Cars = !!(item.timeline && (item.timeline.gameType === 'express' || item.timeline.length === 130));
+                    let stopMarkerPos = (stObj && stObj.type === 'depot') ? stDist : (stObj ? getTrainStopMarkerPos(stObj, item.dir, isItem6Cars) : ((item.dir === 'down') ? (stDist + 42.5) : (stDist - 42.5)));
 
                     let tl = item.timeline;
 
@@ -15514,17 +15643,10 @@
 
                 let stopBefore1m = (dir === 'down') ? (switchPos - 1.0) : (switchPos + 1.0);
 
-                let stopMarkerPos = (st.type === 'depot') ? st.dist : ((dir === 'down') ? (st.dist + 77.0) : (st.dist - 77.0));
+                // 閉塞停車點一律以最前端的停車標為準，不受不同停車標之影響
+                let stopMarkerPos = getFrontStopMarkerPos(st, dir);
 
-                let obsDistToMarker = (typeof curD === 'number')
-
-                    ? ((dir === 'down') ? (stopMarkerPos - curD) : (curD - stopMarkerPos))
-
-                    : 0;
-
-                let stopPointOffset = (obsDistToMarker > 0.35) ? 3.5 : 1.0;
-
-                let stopPointPos = (dir === 'down') ? (stopMarkerPos + stopPointOffset) : (stopMarkerPos - stopPointOffset);
+                let stopPointPos = (dir === 'down') ? (stopMarkerPos + 1.0) : (stopMarkerPos - 1.0);
 
 
 
@@ -15917,9 +16039,9 @@
 
 
 
-                // 我車尚未通過該停止點且在接近區間內 (1500m 內)
+                // 我車尚未通過該停止點且在接近區間內 (1500m 內，向後保留 -50m 以偵測越過停止點超過 1M 時觸發 -5 限速)
 
-                if (distToSwitchStop >= -2.0 && distToSwitchStop <= 1500.0) {
+                if (distToSwitchStop >= -50.0 && distToSwitchStop <= 1500.0) {
 
                     for (let tr of allTrains) {
 
@@ -15994,7 +16116,7 @@
                 let sw4a = 380.0;
                 let stopBefore1m4a = sw4a + 1.0; // 上行往0前進，道岔前1M為 381m
                 let distToSw4a = curD - stopBefore1m4a;
-                if (distToSw4a >= -2.0 && distToSw4a <= 1500.0) {
+                if (distToSw4a >= -50.0 && distToSw4a <= 1500.0) {
                     let myPlat4a = observerTl
                         ? getTrainPlatformAtStation(observerTl, observerTl.gameType || 'local', '飛灣工業區', 'up')
                         : getPlayerPlatformAtStation('飛灣工業區', 'up');
@@ -16066,7 +16188,7 @@
                             } else {
                                 // 實體車尚未出清道岔：下行列車除非到出發時間前30秒，否則不建立進路
                                 let isRouteSet = (myDayNow >= trDepDay - 30.0);
-                                let isPhysInCrossover = (trLive.dHead > 78.5);
+                                let isPhysInCrossover = (trLive.dHead > 66.0);
                                 if (isRouteSet || isPhysInCrossover) {
                                     conflictClearedTimes[key4a] = null;
                                     shouldHoldBeforeSw4a = true;
@@ -16101,7 +16223,7 @@
                             let trDepFR01 = tr.timeline ? getTimelineScheduledSecsAtStation(tr.timeline, '飛灣工業區') : (tr.isPlayer ? getPlayerStationScheduledSecs('飛灣工業區') : null);
                             let trDepDay = (trDepFR01 !== null) ? toDayCycleSecs(trDepFR01) : null;
                             let clearPos4a = sw4a + tr.length + 5.0;
-                            let isPhysInCrossover = (tr.dHead > 78.5 && tr.dHead < clearPos4a);
+                            let isPhysInCrossover = (tr.dHead > 66.0 && tr.dHead < clearPos4a);
                             let isSchedDepFirst = (trDepDay !== null && myArrDay !== null && trDepDay <= myArrDay + 5.0 && (myArrDay - trDepDay) <= 1800);
 
                             // 非先出發列車且不在道岔內，絕不阻擋進站列車！
@@ -16171,7 +16293,7 @@
 
                     let distToSw4b = stopBefore1m4b - curD;
 
-                    if (distToSw4b >= -2.0 && distToSw4b <= 1500.0) {
+                    if (distToSw4b >= -50.0 && distToSw4b <= 1500.0) {
 
                         let myArrFR12 = observerTl
 
@@ -16271,13 +16393,13 @@
 
                     let stObj = STATIONS.find(s => s.name.includes('FR12'));
 
-                    let stopMarker = stObj ? (stObj.dist - 77) : (28500 - 77);
+                    let stopMarker = stObj ? getFrontStopMarkerPos(stObj, 'up') : (28500 - 65);
 
                     let stopPos4c = stopMarker - 1.0;
 
                     let distToStop4c = curD - stopPos4c;
 
-                    if (distToStop4c >= -2.0 && distToStop4c <= 500.0) {
+                    if (distToStop4c >= -50.0 && distToStop4c <= 500.0) {
 
                         let myDepFR12 = observerTl
 
@@ -16311,7 +16433,7 @@
 
                                             isStationPointTarget = true;
 
-                                            let atPlat4c = isObsStoppedAtSt || (Math.abs(distToStop4c) <= 0.45);
+                                            let atPlat4c = isObsStoppedAtSt || (Math.abs(distToStop4c) <= 24.0);
 
                                             holdForDeparture = atPlat4c;
 
@@ -16357,7 +16479,7 @@
 
                     let distToSw4d = stopBefore1m4d - curD;
 
-                    if (distToSw4d >= -2.0 && distToSw4d <= 1500.0) {
+                    if (distToSw4d >= -50.0 && distToSw4d <= 1500.0) {
 
                         let myArrFR21 = observerTl
 
@@ -16465,33 +16587,35 @@
 
             // ------------------------------------------
 
-            // 規則 2: 每列車在每個車站停止標後 1M 有停止點，所有表定先出發的前方及同向列車關門後，該列車才取消該停止點
-
+            // 規則 2: 每列車在每個車站最前端停止標後 1M 有停止點，所有表定先出發的前方及同向列車關門後，該列車才取消該停止點
+            // (閉塞停車點以最前端的停車點為準，不受不同停車標之影響)
             // ------------------------------------------
 
             let waitingTrainsList = [];
+            let isObs6Cars = observerTl ? (observerTl.gameType === 'express' || observerTl.length === 130) : (typeof state !== 'undefined' && state.type === 'express');
 
             for (let st of STATIONS) {
 
                 let cleanName = st.name.replace(/^FR\d+\s*/, '').trim();
 
-                let stopMarkerPos = (st.type === 'depot') ? st.dist : ((dir === 'down') ? (st.dist + 77) : (st.dist - 77));
+                // 閉塞停車點一律以最前端的停車點為準 (±65M 或 ±42.5M)
+                let stopMarkerPos = getFrontStopMarkerPos(st, dir);
+                let ownStopMarkerPos = getTrainStopMarkerPos(st, dir, isObs6Cars);
 
                 let nominalStopPointPos = (dir === 'down') ? (stopMarkerPos + 1.0) : (stopMarkerPos - 1.0);
 
                 let distToStopMarker = (dir === 'down') ? (stopMarkerPos - curD) : (curD - stopMarkerPos);
+                let distToOwnStopMarker = (dir === 'down') ? (ownStopMarkerPos - curD) : (curD - ownStopMarkerPos);
 
                 let isObsStoppedAtSt = !!(observerTl && observerTl._liveState && observerTl._liveState.isStoppedAtStation);
 
-                let rule2Offset = (!isObsStoppedAtSt && distToStopMarker > 0.35) ? 3.5 : 1.0;
-
-                let stopPointPos = (dir === 'down') ? (stopMarkerPos + rule2Offset) : (stopMarkerPos - rule2Offset);
+                let stopPointPos = nominalStopPointPos;
 
                 let distToStationStop = (dir === 'down') ? (stopPointPos - curD) : (curD - stopPointPos);
 
 
 
-                if (distToStationStop >= -15.0 && distToStationStop <= 600.0) {
+                if (distToStationStop >= -50.0 && distToStationStop <= 600.0) {
 
                     let mySchedDepSecs = null;
 
@@ -16572,12 +16696,14 @@
                             if (item.dayDepSecs < myDayDep && (myDayDep - item.dayDepSecs) <= 1800) {
 
                                 let trLive = allTrains.find(t => String(t.num) === String(item.num));
+                                let isItem6Cars = !!(item.timeline && (item.timeline.gameType === 'express' || item.timeline.length === 130));
+                                let trStopMarkerPos = getTrainStopMarkerPos(st, dir, isItem6Cars);
 
                                 if (trLive) {
 
-                                    // 以本站停止標 stopMarkerPos 為基準計算前車/同向車相對於本站的位置 (正值=已駛離本站, 近0=在本站月台, 負值=尚未進站)
+                                    // 以該前車/同向車自身停止標 trStopMarkerPos 為基準計算其相對於本站的位置 (正值=已駛離本站, 近0=在本站月台, 負值=尚未進站)
 
-                                    let distFromStation = (dir === 'down') ? (trLive.dHead - stopMarkerPos) : (stopMarkerPos - trLive.dHead);
+                                    let distFromStation = (dir === 'down') ? (trLive.dHead - trStopMarkerPos) : (trStopMarkerPos - trLive.dHead);
 
                                     let isDepartingOrPast = (distFromStation > 15.0) || !!item.departStarted;
 
@@ -16753,7 +16879,7 @@
 
                                     if (sched && sched.active) {
 
-                                        let distFromStation = (dir === 'down') ? (sched.dHead - stopMarkerPos) : (stopMarkerPos - sched.dHead);
+                                        let distFromStation = (dir === 'down') ? (sched.dHead - trStopMarkerPos) : (trStopMarkerPos - sched.dHead);
 
                                         if (distFromStation > 15.0) {
 
@@ -16861,7 +16987,9 @@
                                         let upLive = allTrains.find(t => t.dir === 'up' && String(t.num) === String(arrItem.num));
                                         if (upLive) {
                                             // 若上行車尚未完全進站停靠 (或在道岔區 380m 內)
-                                            let distFromStop = upLive.dHead - (-77.0);
+                                            let upIs6 = (upLive.gameType === 'express' || upLive.length === 130);
+                                            let upStopPos = getTrainStopMarkerPos(st, 'up', upIs6);
+                                            let distFromStop = upLive.dHead - upStopPos;
                                             let isArrivedAtPlat = upLive.isStoppedAtStation || (Math.abs(distFromStop) <= 5.0 && upLive.v < 0.5);
                                             if (!isArrivedAtPlat && upLive.dHead <= 600.0) {
                                                 isRouteNotSetFR01 = true;
@@ -16878,17 +17006,15 @@
 
                             waitingTrainsList = stWaitingTrains;
 
-                            let effDistToRule2 = Math.max(0, distToStationStop);
+                            if (distToStationStop < blockDist) {
 
-                            if (effDistToRule2 < blockDist) {
-
-                                blockDist = effDistToRule2;
+                                blockDist = distToStationStop;
 
                                 clampPos = stopPointPos;
 
                                 isStationPointTarget = true;
 
-                                let isAtPlatformHoldArea = isObsStoppedAtSt || (Math.abs(distToStopMarker) <= 0.45) || (cleanName === '飛灣工業區' && dir === 'down' && curD <= 78.5);
+                                let isAtPlatformHoldArea = isObsStoppedAtSt || (Math.abs(distToOwnStopMarker) <= 0.45) || (Math.abs(distToStopMarker) <= 0.45) || (cleanName === '飛灣工業區' && dir === 'down' && curD <= 66.0);
 
                                 holdForDeparture = isAtPlatformHoldArea;
 
@@ -16982,7 +17108,7 @@
 
                     let distToClamp = (dir === 'down') ? (r3.minRule1ClampPos - curD) : (curD - r3.minRule1ClampPos);
 
-                    if (distToClamp > 0 && distToClamp <= 1500.0) {
+                    if (distToClamp >= -50.0 && distToClamp <= 1500.0) {
 
                         if (dir === 'down' && r3.minRule1ClampPos > trClampPos) {
 
@@ -17071,12 +17197,18 @@
             // ------------------------------------------
 
             // 計算 CBTC 減速曲線與限速
-
+            // 以站外、停車標為基準的閉塞停止點，超過 1M 速度限制設定為 -5
             // ------------------------------------------
+
+            let isExceededStationOrStopMarkerBlock = (isStationPointTarget && blockDist < 0.0);
 
             let curveMargin = isRule1Controlling ? 2.0 : 0.15;
 
-            if (blockDist <= 0.15) {
+            if (isExceededStationOrStopMarkerBlock) {
+
+                cbtcSpeedLimit = -5;
+
+            } else if (blockDist <= 0.15) {
 
                 cbtcSpeedLimit = 0;
 
@@ -17102,6 +17234,7 @@
                 leadNum: (holdInfo && holdInfo.leadNum) ? holdInfo.leadNum : (bestLead ? bestLead.num : ''),
 
                 blockDist: Math.max(0, blockDist),
+                rawBlockDist: blockDist,
 
                 cbtcSpeedLimit: cbtcSpeedLimit,
 
@@ -22336,7 +22469,7 @@
 
             if (clearTime === null) {
 
-                let stopMarkerPos = (dir === 'down') ? (st.dist + 77) : (st.dist - 77);
+                let stopMarkerPos = getTrainStopMarkerPos(st, dir, len === 130);
 
                 let distPastClear = (dir === 'down') ? (dHead - clearHeadPos) : (clearHeadPos - dHead);
 
@@ -22500,7 +22633,7 @@
 
 
 
-                    let stopMarkerPos = (dir === 'down') ? (st.dist + 77) : (st.dist - 77);
+                    let stopMarkerPos = getFrontStopMarkerPos(st, dir);
 
                     let stopBlockPos = (dir === 'down') ? (stopMarkerPos + 6.0) : (stopMarkerPos - 6.0);
 
@@ -24754,7 +24887,7 @@
 
             let pFR01_start = String(matchedP["飛灣工業區"] || matchedP["FR01"] || matchedP["工業區"] || "");
 
-            state.d = (state.dir === 'down') ? startDist + 77 : startDist - 77;
+            state.d = getPlayerStopMarkerPosAtStation(raw[0], state.dir, state.type);
 
             // 【架構修正】優先級疊加設定 camType，不再用互斥 if-else
 
@@ -25018,7 +25151,7 @@
 
             }
 
-            let targetPos = (state.dir === 'down') ? targetStop.data.dist + 77 : targetStop.data.dist - 77;
+            let targetPos = getPlayerStopMarkerPosAtStation(targetStop.data, state.dir, state.type);
 
             let distToStop = Math.max(0, Math.floor(Math.abs(targetPos - state.d)));
 
@@ -26833,8 +26966,10 @@
                 } else if (!isRadioActive && !isCbtcActive) {
 
                     // CBTC 閉塞終點低速停車釋放容許值 (Release Speed 3.0 km/h) 與標準 ATP 容許超速緩衝 (+3.5 km/h)，防止因動態閉塞曲線微幅下移誤觸超速
-
-                    let overspeedLimit = Math.max(state.atpLimit + 3.5, (!state.door && !state.doorClosing) ? 3.0 : 0);
+                    // 若超過站外或停車標閉塞停止點觸發 -5 速度限制 (state.atpLimit < 0)，則嚴格以負值限速立即判定超速
+                    let overspeedLimit = (state.atpLimit < 0)
+                        ? state.atpLimit
+                        : Math.max(state.atpLimit + 3.5, (!state.door && !state.doorClosing) ? 3.0 : 0);
 
                     if (state.v * 3.6 > overspeedLimit) {
 
@@ -26850,7 +26985,7 @@
 
                 let targetStop = getPhysicalStopInfo();
 
-                let targetPos = (state.dir === 'down') ? targetStop.data.dist + 77 : targetStop.data.dist - 77;
+                let targetPos = getPlayerStopMarkerPosAtStation(targetStop.data, state.dir, state.type);
 
                 let distToStop = (state.dir === 'down') ? (targetPos - state.d) : (state.d - targetPos);
 
@@ -26872,7 +27007,7 @@
 
                     let currNode = state.route[state.idx];
 
-                    let nodePos = (state.dir === 'down') ? currNode.data.dist + 77 : currNode.data.dist - 77;
+                    let nodePos = getPlayerStopMarkerPosAtStation(currNode.data, state.dir, state.type);
 
                     let distToNode = (state.dir === 'down') ? (nodePos - state.d) : (state.d - nodePos);
 
@@ -26984,7 +27119,7 @@
 
 
 
-            let targetPos = (state.dir === 'down') ? targetStop.data.dist + 77 : targetStop.data.dist - 77;
+            let targetPos = getPlayerStopMarkerPosAtStation(targetStop.data, state.dir, state.type);
 
             let distToStop = (state.dir === 'down') ? (targetPos - state.d) : (state.d - targetPos);
 
@@ -27565,10 +27700,10 @@
                 // 以穩定之 B5 煞車模式減速度計算閉塞速度限制 V = sqrt(2 * a * d) * 3.6
 
                 // 當抵達「停止標前 5M」或出發閉塞紅燈停等 (isStationStopBefore5mHold 且列車已於月台停靠/低速) 時，速度限制嚴格為 0 km/h
-
+                // 若越過以站外、停車標為基準的閉塞停止點 (playerBlock.cbtcSpeedLimit < 0)，速度限制設定為 -5
                 let physStop = (typeof getPhysicalStopInfo === 'function') ? getPhysicalStopInfo() : null;
                 let physStopPos = (physStop && physStop.data)
-                    ? ((state.dir === 'down') ? (physStop.data.dist + 77) : (physStop.data.dist - 77))
+                    ? getPlayerStopMarkerPosAtStation(physStop.data, state.dir, state.type)
                     : 0;
                 let distToPhysStop = (physStop && physStop.data)
                     ? ((state.dir === 'down') ? (physStopPos - state.d) : (state.d - physStopPos))
@@ -27590,7 +27725,11 @@
 
                 let isSidingHoldOrLeadFollow = !!(playerBlock.isRule1Controlling || (playerBlock.holdInfo && (playerBlock.holdInfo.isSidingTurnoutHold || playerBlock.holdInfo.isArrivalCrossoverHold)));
                 // 前車閉塞或側線轉轍器前 1M 停止點為實際停止目標，必須依減速曲線停車，不可套用站內 45km/h 固定限速
-                if (!isSidingHoldOrLeadFollow && isPlayerNotAtFixedStop && (state.isStationStopBefore5mHold || (state.stationHoldInfo && distToPhysStop < 400) || (distToPhysStop < 400 && distToPhysStop > -15))) {
+                if (playerBlock.cbtcSpeedLimit < 0) {
+
+                    cbtcSpeedLimit = -5;
+
+                } else if (!isSidingHoldOrLeadFollow && isPlayerNotAtFixedStop && (state.isStationStopBefore5mHold || (state.stationHoldInfo && distToPhysStop < 400) || (distToPhysStop < 400 && distToPhysStop > -15))) {
 
                     cbtcSpeedLimit = 45;
 
@@ -27655,12 +27794,15 @@
 
             let targetAtpLimit = Math.min(finalLimit, dynamicLimit, cbtcSpeedLimit);
 
-            if (state.door || state.doorClosing) targetAtpLimit = 0;
+            if ((state.door || state.doorClosing) && targetAtpLimit > 0) targetAtpLimit = 0;
 
 
 
             // 平滑防突變保護：防止因前方列車突發判定或道岔切換造成 atpLimit 在單幀內斷崖暴降引發瞬間超速 (最大下降率對齊列車常用煞車物理減速能力)
-            if (typeof state.atpLimit === 'number' && state.atpLimit > 0 && targetAtpLimit < state.atpLimit && !state.door && !state.doorClosing && Math.abs(state.v || 0) > 0.15) {
+            // 若觸發 -5 速度限制 (targetAtpLimit < 0)，則立即生效不平滑
+            if (targetAtpLimit < 0) {
+                state.atpLimit = targetAtpLimit;
+            } else if (typeof state.atpLimit === 'number' && state.atpLimit > 0 && targetAtpLimit < state.atpLimit && !state.door && !state.doorClosing && Math.abs(state.v || 0) > 0.15) {
                 let maxDropRatePerSec = 4.0;
                 let maxDropThisFrame = maxDropRatePerSec * dt;
                 state.atpLimit = Math.max(targetAtpLimit, state.atpLimit - maxDropThisFrame);
@@ -28608,7 +28750,7 @@
 
                     let currNode = getPhysicalStopInfo();
 
-                    let targetPos = (state.dir === 'down') ? currNode.data.dist + 77 : currNode.data.dist - 77;
+                    let targetPos = getPlayerStopMarkerPosAtStation(currNode.data, state.dir, state.type);
 
                     let diff = (state.dir === 'down') ? (targetPos - state.d) : (state.d - targetPos);
 
@@ -29408,7 +29550,7 @@
 
             // 速度碼丟失或 RM 模式下不再有橘條
 
-            let limPct = (isCbtcLoss || isRMMode) ? 0 : (state.atpLimit / 140);
+            let limPct = (isCbtcLoss || isRMMode) ? 0 : Math.max(0, state.atpLimit / 140);
 
             if (limPct > 1) limPct = 1;
 
@@ -29428,7 +29570,7 @@
 
             let targetStop = getPhysicalStopInfo();
 
-            let targetPos = (state.dir === 'down') ? targetStop.data.dist + 77 : targetStop.data.dist - 77;
+            let targetPos = getPlayerStopMarkerPosAtStation(targetStop.data, state.dir, state.type);
 
             let diff = (state.dir === 'down') ? (targetPos - state.d) : (state.d - targetPos);
 

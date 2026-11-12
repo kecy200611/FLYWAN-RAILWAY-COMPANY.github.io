@@ -27,6 +27,7 @@
         <a href="tickets.html">票務資訊</a>
         <a href="company.html">公司介紹</a>
         <a href="extras.html" class="active">其他資料</a>
+        <a href="game.html" target="_blank" rel="noopener noreferrer">小遊戲</a>
         <a href="contact.html">聯絡我們</a>
       </nav>
     </div>
@@ -96,63 +97,7 @@
         <a href="行控室手冊.html" target="_blank" class="manual-card">行控室標準作業手冊</a>
       </div>
     </section>
-
-    <section class="game-section">
-      <h2>線上駕駛模擬器</h2>
-      <div class="game-container" id="gameContainer">
-        <div id="gameCover" class="game-cover">
-          <h3 style="color: #fff; margin-bottom: 20px; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">模擬器準備就緒</h3>
-          <button class="start-btn" onclick="enterGame()">開始遊戲</button>
-        </div>
-
-        <button id="exitBtn" class="exit-btn" onclick="exitGame()">縮小 (退出全螢幕)</button>
-
-        <iframe src="game.html" class="game-iframe" id="gameIframe"></iframe>
-      </div>
-    </section>
   </main>
-
-  <script>
-    const container = document.getElementById("gameContainer");
-    const cover = document.getElementById("gameCover");
-    const exitBtn = document.getElementById("exitBtn");
-    const iframe = document.getElementById("gameIframe");
-
-    // 進入遊戲：全螢幕 + 隱藏遮罩
-    function enterGame() {
-      if (container.requestFullscreen) {
-        container.requestFullscreen();
-      } else if (container.webkitRequestFullscreen) {
-        container.webkitRequestFullscreen();
-      }
-    }
-
-    // 退出遊戲：退出全螢幕
-    function exitGame() {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      } else if (document.webkitExitFullscreen) {
-        document.webkitExitFullscreen();
-      }
-    }
-
-    // 監聽狀態變化 (處理按 ESC 退出或點擊縮小按鈕)
-    function handleFsChange() {
-      if (document.fullscreenElement || document.webkitFullscreenElement) {
-        // 進入全螢幕狀態
-        cover.style.display = 'none'; // 隱藏遮罩
-        exitBtn.style.display = 'block'; // 顯示縮小按鈕
-        iframe.focus(); // 聚焦遊戲以利操作
-      } else {
-        // 退出全螢幕狀態 (縮小)
-        cover.style.display = 'flex'; // 蓋回遮罩
-        exitBtn.style.display = 'none'; // 隱藏縮小按鈕
-      }
-    }
-
-    document.addEventListener('fullscreenchange', handleFsChange);
-    document.addEventListener('webkitfullscreenchange', handleFsChange);
-  </script>
 
   <footer class="site-footer">
     <div class="container">
